@@ -1,7 +1,7 @@
 DEAD SIGNAL
 
 <p align="center">
-  <img src="./logo.png" alt="Dead Signal Logo" width="420">
+  <img src="./logo_20261025_230756_0000.png" alt="Dead Signal Logo" width="420">
 </p><p align="center">
   <strong>One room. One decision. A nation's fate.</strong>
 </p><p align="center">
