@@ -1,0 +1,13 @@
+# Godot 4 cache and imports
+.godot/
+/android/
+*.tmp
+
+# Build output
+/build/
+*.apk
+*.aab
+
+# Export credentials (never commit)
+export_credentials.cfg
+*.keystore
