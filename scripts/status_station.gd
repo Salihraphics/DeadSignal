@@ -2,7 +2,8 @@ extends Node3D
 ## Right-side facility status station: an upright analogue instrument
 ## panel (power, readiness, cooling), warning lamps, breaker handles,
 ## and a logbook on the desk. Needles drift slightly so the facility
-## reads as running. Visual only in this stage.
+## reads as running. Tapping the panel leans in to read it; the breakers
+## then open and close, moving their power meter (placeholder only).
 ##
 ## Built in local space: the operator is toward +Z, the wall toward -Z.
 
@@ -30,7 +31,8 @@ func _process(delta: float) -> void:
 	_t += delta
 	for n in _needles:
 		var wobble: float = sin(_t * n.speed + n.phase) * 0.6 + sin(_t * n.speed * 2.7) * 0.25
-		n.node.rotation.z = deg_to_rad(n.base + wobble * n.range)
+		n.cur = lerpf(n.cur, n.base, 1.0 - exp(-4.0 * delta))
+		n.node.rotation.z = deg_to_rad(n.cur + wobble * n.range)
 	var on := fmod(_t, 2.0) < 1.0
 	_filter_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, on)
 
@@ -44,6 +46,11 @@ func _build_panel(p: Node3D) -> void:
 	var fz := 0.012
 	K.box(p, Vector3(0.6, 0.06, 0.004), Vector3(0, h - 0.06, fz), K.mat("bakelite"), Vector3.ZERO, false)
 	K.label(p, "FACILITY STATUS", Vector3(0, h - 0.06, fz + 0.004), 0.032, Color(0.85, 0.83, 0.75))
+	var zone := Interactable.make(p, Vector3(w + 0.04, h + 0.04, 0.12), Vector3(0, h * 0.5, 0.07), "StatusPanel")
+	zone.focus_zone = true
+	zone.focus_title = "FACILITY STATUS"
+	zone.focus_fov = 55.0
+	zone.focus_distance = 1.15
 
 	# Row 1: round cooling gauges.
 	var gauges := [["COOLANT T", -40.0], ["COOLANT P", 10.0], ["VENT FLOW", 30.0], ["SHAFT T", -15.0]]
@@ -67,12 +74,26 @@ func _build_panel(p: Node3D) -> void:
 			var c := BuildKit.AMBER if (row == 1 and col == 3) else BuildKit.GREEN
 			K.box(ready, Vector3(0.06, 0.035, 0.01), Vector3(-0.225 + col * 0.09, 0.055 - row * 0.055, 0.008), K.lamp(c, lit, 1.4), Vector3.ZERO, false)
 
-	# Row 3: breaker handles and warning lamps.
+	# Row 3: breaker handles and warning lamps. CB-1..3 feed the meters
+	# above (needles 4..6); vertical handle = closed.
+	var meter_on := [5.0, 0.0, 15.0]
+	var meter_off := [-40.0, -40.0, -30.0]
 	for i in range(4):
 		var x := -0.78 + i * 0.16
 		K.cyl(p, 0.04, 0.025, Vector3(x, 0.2, fz + 0.012), K.mat("metal_dark"), Vector3(90, 0, 0), 10)
-		K.box(p, Vector3(0.022, 0.09, 0.03), Vector3(x, 0.2, fz + 0.035), K.mat("bakelite"), Vector3(0, 0, 0 if i != 2 else 90))
+		var handle := K.pivot(p, Vector3(x, 0.2, fz + 0.035), Vector3(0, 0, 0 if i != 2 else 90))
+		K.box(handle, Vector3(0.022, 0.09, 0.03), Vector3.ZERO, K.mat("bakelite"))
 		K.label(p, "CB-%d" % (i + 1), Vector3(x, 0.125, fz + 0.002), 0.016, TEXT_DARK)
+		var area := Interactable.make(p, Vector3(0.15, 0.2, 0.09), Vector3(x, 0.18, 0.07), "Breaker%d" % (i + 1))
+		var state := {"closed": i != 2}
+		area.activated.connect(func(_hit: Vector3) -> void:
+			state.closed = not state.closed
+			var tw := create_tween()
+			tw.tween_property(handle, "rotation_degrees:z", 0.0 if state.closed else 90.0, 0.15) \
+					.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			if i < 3:
+				_needles[4 + i].base = meter_on[i] if state.closed else meter_off[i]
+			get_tree().call_group("hud", "toast", "CB-%d: %s" % [i + 1, "CLOSED" if state.closed else "OPEN"]))
 	var warns := [["FILTER", BuildKit.AMBER], ["FIRE", BuildKit.RED], ["FLOOD", BuildKit.RED], ["DOOR", BuildKit.RED], ["GEN", BuildKit.AMBER]]
 	for i in range(warns.size()):
 		var x := 0.12 + i * 0.15
@@ -114,7 +135,7 @@ func _round_gauge(parent: Node3D, pos: Vector3, title: String, base_deg: float) 
 	K.box(needle, Vector3(0.005, 0.07, 0.003), Vector3(0, 0.03, 0), K.mat("needle"), Vector3.ZERO, false)
 	K.cyl(g, 0.01, 0.01, Vector3(0, 0, 0.048), K.mat("bakelite"), Vector3(90, 0, 0), 8)
 	K.label(g, title, Vector3(0, -0.045, 0.044), 0.014, TEXT_DARK)
-	_needles.append({"node": needle, "base": base_deg, "range": 3.0, "speed": randf_range(0.4, 0.9), "phase": randf() * TAU})
+	_needles.append({"node": needle, "base": base_deg, "cur": base_deg, "range": 3.0, "speed": randf_range(0.4, 0.9), "phase": randf() * TAU})
 
 
 func _edge_meter(parent: Node3D, pos: Vector3, title: String, base_deg: float) -> void:
@@ -128,7 +149,7 @@ func _edge_meter(parent: Node3D, pos: Vector3, title: String, base_deg: float) -
 	var needle := K.pivot(m, Vector3(0, -0.045, 0.045))
 	K.box(needle, Vector3(0.003, 0.085, 0.003), Vector3(0, 0.042, 0), K.mat("needle"), Vector3.ZERO, false)
 	K.label(m, title, Vector3(0, -0.035, 0.043), 0.014, TEXT_DARK)
-	_needles.append({"node": needle, "base": base_deg, "range": 1.5, "speed": randf_range(0.8, 1.6), "phase": randf() * TAU})
+	_needles.append({"node": needle, "base": base_deg, "cur": base_deg, "range": 1.5, "speed": randf_range(0.8, 1.6), "phase": randf() * TAU})
 
 
 func _build_desk_props() -> void:

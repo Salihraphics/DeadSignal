@@ -57,3 +57,15 @@ func _ready() -> void:
 	sm.set_shader_parameter("screen_tex", vp.get_texture())
 	sm.set_shader_parameter("scanlines", float(resolution.y) * 0.5)
 	K.quad(self, screen_size, Vector3(0, 0, -0.015), sm)
+
+	# Tap the monitor to lean in; while focused, taps on the glass are
+	# passed to the screen as 0..1 coordinates.
+	var zone := Interactable.make(self, Vector3(outer.x, outer.y + bezel, 0.14), Vector3(0, 0, 0.03), "ScreenZone")
+	zone.focus_zone = true
+	zone.focus_title = drawer.title()
+	zone.focus_actions = drawer.actions()
+	zone.focus_fov = 50.0
+	zone.focus_distance = screen_size.y * 0.8 / tan(deg_to_rad(zone.focus_fov * 0.5)) + 0.03
+	zone.poked.connect(func(p: Vector3) -> void:
+		drawer.poke(Vector2(p.x / screen_size.x + 0.5, 0.5 - p.y / screen_size.y)))
+	zone.action_requested.connect(drawer.do_action)

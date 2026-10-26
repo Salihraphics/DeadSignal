@@ -2,13 +2,16 @@ extends Node3D
 ## The operator's main desk: desk body, the slanted control panel in
 ## front of the operator, and CRT light spill. The three CRT monitors are
 ## child nodes in main.tscn (crt_monitor.gd) so they can be moved in the editor.
-## Controls are visual only in this stage.
+## Toggles, push buttons and knobs respond to taps with placeholder
+## feedback only; the MASTER cover and key are locked in this stage.
 
 const DESK_TOP := 0.76
 const DESK_FRONT_Z := -0.45
 const DESK_BACK_Z := -1.45
 
 var _blink_lamp: MeshInstance3D
+var _counter: Label3D
+var _counter_values := [0, 0, 0]
 var _t := 0.0
 
 
@@ -65,7 +68,7 @@ func _build_control_panel() -> void:
 	var names := ["MAIN BUS", "AUX BUS", "COMMS", "RADAR", "SHAFT VNT"]
 	for i in range(names.size()):
 		var x := -0.88 + i * 0.115
-		_toggle(p, Vector3(x, 0.004, 0.02), i % 3 != 1)
+		_toggle(p, Vector3(x, 0.004, 0.02), i % 3 != 1, names[i])
 		K.label(p, names[i], Vector3(x, 0.006, -0.07), 0.014, Color(0.1, 0.09, 0.08), text)
 	K.label(p, "POWER DISTRIBUTION", Vector3(-0.65, 0.006, 0.095), 0.016, Color(0.1, 0.09, 0.08), text)
 
@@ -89,30 +92,69 @@ func _build_control_panel() -> void:
 	K.cyl(p, 0.014, 0.018, Vector3(0.1, 0.014, 0.045), K.mat("brass"), Vector3.ZERO, 10)
 	K.box(p, Vector3(0.004, 0.006, 0.018), Vector3(0.1, 0.024, 0.045), K.mat("bakelite"))
 	K.label(p, "KEY", Vector3(0.1, 0.006, 0.105), 0.013, Color(0.1, 0.09, 0.08), text)
+	var locked := Interactable.make(p, Vector3(0.25, 0.07, 0.17), Vector3(0.025, 0.03, 0.045), "MasterLocked")
+	locked.activated.connect(func(_hit: Vector3) -> void:
+		_toast("MASTER CONTROLS LOCKED"))
 
 	# Right group: amber counter readout, rotary knobs, push buttons.
 	K.box(p, Vector3(0.2, 0.01, 0.06), Vector3(0.48, 0.006, -0.05), K.mat("bakelite"))
-	K.label(p, "00 00 00", Vector3(0.48, 0.0125, -0.05), 0.03, BuildKit.AMBER, text)
+	_counter = K.label(p, "00 00 00", Vector3(0.48, 0.0125, -0.05), 0.03, BuildKit.AMBER, text)
+	# Each knob steps one digit pair of the counter (placeholder).
 	for i in range(3):
 		var x := 0.4 + i * 0.08
-		K.cyl(p, 0.022, 0.026, Vector3(x, 0.014, 0.05), K.mat("bakelite"), Vector3.ZERO, 10)
-		K.box(p, Vector3(0.004, 0.004, 0.02), Vector3(x, 0.028, 0.042), K.mat("paper"), Vector3(0, i * 40.0 - 40.0, 0))
-	var caps := [K.lamp(BuildKit.GREEN, true, 1.2), K.lamp(BuildKit.AMBER, true, 1.2), K.lamp(BuildKit.RED, false),
-			K.mat("steel"), K.lamp(BuildKit.GREEN, false), K.lamp(BuildKit.AMBER, false)]
+		var knob := K.pivot(p, Vector3(x, 0.014, 0.05), Vector3(0, i * 40.0 - 40.0, 0))
+		K.cyl(knob, 0.022, 0.026, Vector3.ZERO, K.mat("bakelite"), Vector3.ZERO, 10)
+		K.box(knob, Vector3(0.004, 0.004, 0.02), Vector3(0, 0.014, -0.008), K.mat("paper"))
+		var area := Interactable.make(p, Vector3(0.078, 0.07, 0.1), Vector3(x, 0.03, 0.05), "Knob%d" % (i + 1))
+		area.activated.connect(_turn_knob.bind(knob, i))
+	var caps := [[BuildKit.GREEN, true], [BuildKit.AMBER, true], [BuildKit.RED, false],
+			[Color(0.75, 0.76, 0.78), false], [BuildKit.GREEN, false], [BuildKit.AMBER, false]]
 	for i in range(caps.size()):
 		var x := 0.7 + (i % 3) * 0.075
 		var z := -0.04 + (i / 3) * 0.075
+		var color: Color = caps[i][0]
+		var rest: Material = K.lamp(color, caps[i][1], 1.2) if i != 3 else K.mat("steel")
 		K.box(p, Vector3(0.052, 0.008, 0.052), Vector3(x, 0.004, z), K.mat("metal_dark"))
-		K.box(p, Vector3(0.04, 0.016, 0.04), Vector3(x, 0.014, z), caps[i])
+		var cap := K.box(p, Vector3(0.04, 0.016, 0.04), Vector3(x, 0.014, z), rest)
+		var area := Interactable.make(p, Vector3(0.073, 0.06, 0.073), Vector3(x, 0.025, z), "PushButton%d" % (i + 1))
+		area.activated.connect(_press_button.bind(cap, rest, K.lamp(color, true, 2.6)))
 
 
-func _toggle(parent: Node3D, pos: Vector3, up: bool) -> void:
+func _toggle(parent: Node3D, pos: Vector3, up: bool, title: String) -> void:
 	var K := BuildKit
 	K.box(parent, Vector3(0.035, 0.004, 0.05), pos, K.mat("steel"))
 	K.cyl(parent, 0.01, 0.012, pos + Vector3(0, 0.008, 0), K.mat("steel"), Vector3.ZERO, 8)
-	var lever := K.cyl(parent, 0.0045, 0.04, pos + Vector3(0, 0.022, 0), K.mat("steel"), Vector3.ZERO, 6)
-	lever.rotation_degrees.x = 28.0 if up else -28.0
-	lever.position += Vector3(0, 0, 0.009 if up else -0.009)
+	var hinge := K.pivot(parent, pos + Vector3(0, 0.008, 0), Vector3(28.0 if up else -28.0, 0, 0))
+	K.cyl(hinge, 0.0045, 0.04, Vector3(0, 0.02, 0), K.mat("steel"), Vector3.ZERO, 6)
+	# Touch target covers the switch and its label (spacing is 0.115 m).
+	var area := Interactable.make(parent, Vector3(0.105, 0.07, 0.15), pos + Vector3(0, 0.03, 0.0), "Toggle " + title)
+	var state := {"up": up}
+	area.activated.connect(func(_hit: Vector3) -> void:
+		state.up = not state.up
+		BuildKit.flip_lever(hinge, state.up)
+		_toast("%s: %s" % [title, "ON" if state.up else "OFF"]))
+
+
+
+func _press_button(_hit: Vector3, cap: MeshInstance3D, rest: Material, lit: Material) -> void:
+	cap.material_override = lit
+	var tw := create_tween()
+	tw.tween_property(cap, "position:y", 0.008, 0.05)
+	tw.tween_interval(0.18)
+	tw.tween_property(cap, "position:y", 0.014, 0.08)
+	tw.tween_callback(func() -> void: cap.material_override = rest)
+
+
+func _turn_knob(_hit: Vector3, knob: Node3D, index: int) -> void:
+	var tw := create_tween()
+	tw.tween_property(knob, "rotation_degrees:y", knob.rotation_degrees.y - 36.0, 0.12) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_counter_values[index] = (_counter_values[index] + 1) % 100
+	_counter.text = "%02d %02d %02d" % _counter_values
+
+
+func _toast(text: String) -> void:
+	get_tree().call_group("hud", "toast", text)
 
 
 func _build_desk_props() -> void:

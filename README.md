@@ -73,6 +73,7 @@ Roadmap
 - [x] Build the 3D command room. *(Stage 1 prototype)*
 - [x] Implement limited seated camera movement. *(Stage 1 prototype)*
 - [ ] Create CRT displays and analogue control panels. *(placeholders in place)*
+- [x] Basic placeholder interactions and focus mode.
 - [ ] Add lighting, materials, and environmental details.
 - [ ] Implement communications and incoming orders.
 - [ ] Add fictional map and radar interfaces.
@@ -81,9 +82,9 @@ Roadmap
 - [ ] Add endings, statistics, and sound design.
 - [ ] Optimise and test on Android.
 
-Running the Prototype (Stage 1)
+Running the Prototype
 
-The current build is the command room and the seated camera only. Screens and controls are placeholders; nothing is interactive yet except the camera.
+The current build is the command room, the seated camera and basic placeholder interactions. No gameplay systems exist yet: no orders, calls, targets or launches.
 
 Controls
 
@@ -91,9 +92,28 @@ Controls
 | --- | --- | --- |
 | Look around (limited) | Drag anywhere | Left-mouse drag |
 | Turn to comms / status station | `< COMMS` / `STATUS >` buttons | `A` / `D` or arrow keys |
-| Face the main console again | `CONSOLE` button or double-tap | Double-click, `R`, `Space` or `Home` |
+| Face the main console again | `CONSOLE` button or double-tap empty space | Double-click, `R`, `Space` or `Home` |
+| Use a control / lean in to a screen or panel | Tap it | Click it |
+| Leave a focused view | `< BACK`, double-tap empty space, or Android back | `Esc`, `R`, `Space` |
 
-The view turns about 80° to either side and tilts slightly up and down. The operator cannot stand, walk or turn around.
+The view turns about 80° to either side and tilts slightly up and down. The operator cannot stand, walk or turn around. A press that moves is always a look-drag; only a short tap interacts, and on-screen buttons never turn the view.
+
+Interactive objects (placeholder feedback only)
+
+| Where | Object | Response |
+| --- | --- | --- |
+| Main desk | Three CRT screens | Lean in (focus). Tapping the glass marks the touch point. Map: `ZOOM +/-`; control: `SELF TEST`; radar: `RANGE` |
+| Main desk | Five toggle switches | Lever flips, status message |
+| Main desk | Six push buttons | Button presses in and lights |
+| Main desk | Three knobs | Knob turns, steps the amber counter |
+| Main desk | MASTER cover and key | "MASTER CONTROLS LOCKED" (not part of this stage) |
+| Comms | Telephone | Handset lifts / hangs up, off-hook lamp |
+| Comms | Radio transceiver | Cycles placeholder channels |
+| Comms | Teleprinter | Paper feeds, "no new messages" |
+| Comms | Communication lines panel | Lean in; six line switches toggle their lamps |
+| Status | Facility status panel | Lean in; breakers CB-1..4 open/close and move their power meters |
+
+Small or distant controls (the comms line switches and the status breakers) only work after leaning in to their panel, so every touch target stays comfortably large.
 
 Getting the APK onto a phone (no desktop needed)
 
@@ -123,7 +143,9 @@ scripts/crt_monitor.gd   CRT monitor (bezel, tube, live screen)
 scripts/screen_content.gd Placeholder CRT content: map / control / radar
 scripts/comms_station.gd Left: telephone, radio, printer, reports, clock
 scripts/status_station.gd Right: gauges, power meters, readiness, warnings
-scripts/operator_camera.gd Seated camera limits, views, touch/mouse/keys
+scripts/operator_camera.gd Seated camera limits, views, focus lean, touch/mouse/keys
+scripts/interactable.gd  Invisible tap target / focus zone used by props
+scripts/interaction.gd   Turns taps into hits, manages focus mode and back
 shaders/crt.gdshader     Scanlines, curvature and vignette for CRTs
 assets/flags/            Approved country flags (unchanged originals)
 assets/textures/         Low-res worn textures (tools/gen_textures.py)

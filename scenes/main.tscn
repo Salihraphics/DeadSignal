@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/command_room.gd" id="1_room"]
 [ext_resource type="Script" path="res://scripts/main_console.gd" id="2_console"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/status_station.gd" id="5_status"]
 [ext_resource type="Script" path="res://scripts/operator_camera.gd" id="6_camera"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/interaction.gd" id="8_interaction"]
 
 [node name="Main" type="Node3D"]
 
@@ -55,3 +56,8 @@ script = ExtResource("6_camera")
 
 [node name="HUD" parent="." node_paths=PackedStringArray("camera") instance=ExtResource("7_hud")]
 camera = NodePath("../OperatorCamera")
+
+[node name="Interaction" type="Node" parent="." node_paths=PackedStringArray("camera", "hud")]
+script = ExtResource("8_interaction")
+camera = NodePath("../OperatorCamera")
+hud = NodePath("../HUD")

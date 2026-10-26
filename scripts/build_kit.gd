@@ -64,6 +64,13 @@ static func label(parent: Node3D, text: String, pos: Vector3, size := 0.018,
 	return l
 
 
+## Snaps a lever pivot to its up/down position with a small overshoot.
+static func flip_lever(hinge: Node3D, up: bool, angle := 28.0) -> void:
+	var tw := hinge.create_tween()
+	tw.tween_property(hinge, "rotation_degrees:x", angle if up else -angle, 0.09) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 ## A pivot node: lets a station place a tilted panel and then position
 ## its controls in the panel's own flat coordinate space.
 static func pivot(parent: Node3D, pos: Vector3, rot_deg := Vector3.ZERO) -> Node3D:
