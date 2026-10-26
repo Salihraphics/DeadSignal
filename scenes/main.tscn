@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/command_room.gd" id="1_room"]
 [ext_resource type="Script" path="res://scripts/main_console.gd" id="2_console"]
@@ -10,11 +10,18 @@
 [ext_resource type="Script" path="res://scripts/interaction.gd" id="8_interaction"]
 [ext_resource type="Script" path="res://scripts/order_manager.gd" id="9_orders"]
 [ext_resource type="PackedScene" path="res://scenes/message_reader.tscn" id="10_reader"]
+[ext_resource type="Script" path="res://scripts/strategic_state.gd" id="11_strategy"]
+[ext_resource type="Script" path="res://scripts/map_control_unit.gd" id="12_mapunit"]
+[ext_resource type="Script" path="res://scripts/missile_launch.gd" id="13_missile"]
+[ext_resource type="Script" path="res://scripts/launch_controller.gd" id="14_launch"]
 
 [node name="Main" type="Node3D"]
 
 [node name="Orders" type="Node" parent="."]
 script = ExtResource("9_orders")
+
+[node name="Strategy" type="Node" parent="."]
+script = ExtResource("11_strategy")
 
 [node name="CommandRoom" type="Node3D" parent="."]
 script = ExtResource("1_room")
@@ -26,14 +33,21 @@ script = ExtResource("2_console")
 transform = Transform3D(0.913545, 0, 0.406737, 0, 1, 0, -0.406737, 0, 0.913545, -0.56, 0.955, -0.93)
 script = ExtResource("3_crt")
 screen_size = Vector2(0.3, 0.225)
-resolution = Vector2i(256, 192)
+resolution = Vector2i(512, 384)
 content = 0
+focus_offset = Vector3(-0.15, 0.035, 0)
+focus_distance = 0.44
+focus_elevation_deg = 27.0
+
+[node name="MapControlUnit" type="Node3D" parent="MainConsole"]
+transform = Transform3D(0.913545, 0, 0.406737, 0, 1, 0, -0.406737, 0, 0.913545, -0.913, 0.76, -0.839)
+script = ExtResource("12_mapunit")
 
 [node name="MonitorCenter" type="Node3D" parent="MainConsole"]
 transform = Transform3D(1, 0, 0, 0, 0.994522, 0.104528, 0, -0.104528, 0.994522, 0, 1.03, -1.0)
 script = ExtResource("3_crt")
 screen_size = Vector2(0.44, 0.33)
-resolution = Vector2i(320, 240)
+resolution = Vector2i(512, 384)
 content = 1
 
 [node name="MonitorRight" type="Node3D" parent="MainConsole"]
@@ -69,3 +83,13 @@ hud = NodePath("../HUD")
 
 [node name="MessageReader" parent="." node_paths=PackedStringArray("orders") instance=ExtResource("10_reader")]
 orders = NodePath("../Orders")
+
+[node name="MissileLaunch" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.05)
+script = ExtResource("13_missile")
+
+[node name="LaunchController" type="Node" parent="." node_paths=PackedStringArray("camera", "room", "missile")]
+script = ExtResource("14_launch")
+camera = NodePath("../OperatorCamera")
+room = NodePath("../CommandRoom")
+missile = NodePath("../MissileLaunch")

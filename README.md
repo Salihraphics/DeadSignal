@@ -76,15 +76,15 @@ Roadmap
 - [x] Basic placeholder interactions and focus mode.
 - [ ] Add lighting, materials, and environmental details.
 - [ ] Implement communications and incoming orders. *(first order playable)*
-- [ ] Add fictional map and radar interfaces.
-- [ ] Develop the missile launch sequence.
+- [x] Add fictional map and radar interfaces. *(tactical map; radar placeholder)*
+- [x] Develop the missile launch sequence. *(prototype)*
 - [ ] Implement battlefield simulation and decision consequences.
 - [ ] Add endings, statistics, and sound design.
 - [ ] Optimise and test on Android.
 
 Running the Prototype
 
-The current build is the command room, the seated camera, basic placeholder interactions and the first playable order. There is no campaign, battlefield simulation, targeting or launch yet.
+The current build is the command room, the seated camera, the first playable order, a tactical map driven by physical desk controls, and a first launch prototype. There is no campaign, battlefield simulation or ending yet. All mechanics are fictional and abstract.
 
 First order (Stage 3)
 
@@ -98,6 +98,18 @@ About ten seconds after the room loads, order **SC-001** arrives on the teleprin
 
 Decisions are kept for the current session only. The unit, place and officer names in the order are fictional and provisional.
 
+Tactical map and launch (Stage 4-5 prototype)
+
+1. **Read the order**, then tap the left CRT to lean in over the map and the **MAP NAVIGATION** unit beside it.
+2. **Navigate with the knobs** (touching the map itself does nothing): circle `CURSOR X` / `CURSOR Y` with a finger to move the reticle, `ZOOM` to zoom, roll the `PAN` trackball to move the view. `LAYER` selects one of nine layers and `ON / OFF` shows or hides it.
+3. **Confirm a grid** with `CONFIRM GRID`: the 4 km cell under the cursor (e.g. `RS-27`) becomes the target and stays fixed while you keep moving the map.
+4. **Choose ammunition** with the `S` / `M` / `L` push buttons on the desk (or the CRT focus buttons). Costs come out of 10 resource points.
+5. **Review the launch summary** on the centre CRT: grid, classification, intelligence confidence, cost, and warnings for known friendly or civilian presence in the effect area.
+6. **Turn the KEY** to arm, tap the red **MASTER** cover to lift it, then tap MASTER again. A 5 s countdown follows; `ABORT`, the key or `ABORT` on the CRT stop it.
+7. At T-0 the missile rises through the shaft window. From that moment the launch is irreversible and recorded once. A fictional report follows on the centre CRT; the event appears on the map and in the log, and the shaft reloads.
+
+Map conventions: one fixed fictional sheet (160 x 120 km, north up). Grid squares are 40 km (`P`-`S` west to east, `R`-`T` north to south) split into 4 km cells numbered by easting then northing (counted from the square's south edge). `RS-27` is the cell 88-92 km east, 48-52 km south, 12 km east of Karsen Junction. Varnesk lies off this sheet to the west. Reported intelligence is shown dashed in amber and is not confirmed; what is really there is only revealed by events.
+
 Controls
 
 | Action | Touch (Android) | Desktop |
@@ -106,19 +118,21 @@ Controls
 | Turn to comms / status station | `< COMMS` / `STATUS >` buttons | `A` / `D` or arrow keys |
 | Face the main console again | `CONSOLE` button or double-tap empty space | Double-click, `R`, `Space` or `Home` |
 | Use a control / lean in to a screen or panel | Tap it | Click it |
+| Turn a desk knob | Circle it with a finger | Circle it with the mouse |
 | Leave a focused view | `< BACK`, double-tap empty space, or Android back | `Esc`, `R`, `Space` |
 
 The view turns about 80° to either side and tilts slightly up and down. The operator cannot stand, walk or turn around. A press that moves is always a look-drag; only a short tap interacts, and on-screen buttons never turn the view.
 
-Interactive objects (placeholder feedback only)
+Interactive objects
 
 | Where | Object | Response |
 | --- | --- | --- |
-| Main desk | Three CRT screens | Lean in (focus). Tapping the glass marks the touch point. Map: `ZOOM +/-`; control: `SELF TEST`; radar: `RANGE` |
+| Main desk | Three CRT screens | Lean in (focus). Map: physical controls only. Control: `SMALL` `MEDIUM` `LARGE` `ABORT` `CLEAR`. Radar: `RANGE` |
+| Main desk | Map navigation unit | Cursor X/Y, zoom, pan trackball, layer selector and on/off, confirm grid |
 | Main desk | Five toggle switches | Lever flips, status message |
-| Main desk | Six push buttons | Button presses in and lights |
-| Main desk | Three knobs | Knob turns, steps the amber counter |
-| Main desk | MASTER cover and key | "MASTER CONTROLS LOCKED" (not part of this stage) |
+| Main desk | Six push buttons | `S` `M` `L` select ammunition (lit = selected), `ABORT`, two spares |
+| Main desk | Three counter knobs | Knob turns, steps the amber counter (placeholder) |
+| Main desk | KEY and red MASTER | Key arms / safes; MASTER lifts its cover, then starts the launch sequence |
 | Comms | Telephone | Handset lifts / hangs up, off-hook lamp |
 | Comms | Radio transceiver | Cycles placeholder channels |
 | Comms | Teleprinter | Opens the current order (before one arrives: paper feeds, "no new messages") |
@@ -150,9 +164,20 @@ scenes/main.tscn         The room: shell, three stations, camera, HUD
 scenes/hud.tscn          Touch buttons, control hint, FPS readout
 scripts/build_kit.gd     Shared geometry helpers + material/colour palette
 scripts/command_room.gd  Walls, observation window, launch shaft, lights
-scripts/main_console.gd  Main desk and slanted control panel
+scripts/main_console.gd  Main desk, control panel, ammunition / key / MASTER
 scripts/crt_monitor.gd   CRT monitor (bezel, tube, live screen)
-scripts/screen_content.gd Placeholder CRT content: map / control / radar
+scripts/screen_content.gd Right CRT: radar sweep
+scripts/map/map_grid.gd  The one map coordinate system and grid references
+scripts/map/map_data.gd  Fixed fictional geography, military overlay, hidden truth
+scripts/map/map_query.gd What is known about a cell (never the hidden truth)
+scripts/map/tactical_map.gd Left CRT: map renderer, layers, cursor, target
+scripts/map_control_unit.gd Physical map knobs, trackball, layer and confirm
+scripts/strategic_state.gd Shared state: view, cursor, target, ammo, launch, events
+scripts/strategic_display.gd Centre CRT: status, ammunition, summary, report
+scripts/ammunition.gd    Fictional ammunition categories (cost, effect radius)
+scripts/launch_controller.gd Countdown, ignition, report delay, reload
+scripts/outcome_model.gd Abstract fictional launch outcomes
+scripts/missile_launch.gd Missile, flame, smoke and hatch in the shaft
 scripts/comms_station.gd Left: telephone, radio, printer, reports, clock
 scripts/status_station.gd Right: gauges, power meters, readiness, warnings
 scripts/operator_camera.gd Seated camera limits, views, focus lean, touch/mouse/keys

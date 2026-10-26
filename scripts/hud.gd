@@ -60,7 +60,7 @@ func show_focus(title: String, actions: PackedStringArray) -> void:
 		var b := _back.duplicate(0) as Button   # style only, no signals
 		b.unique_name_in_owner = false
 		b.text = a
-		b.custom_minimum_size = Vector2(150, 62)
+		b.custom_minimum_size = Vector2(140, 62)
 		b.pressed.connect(action_pressed.emit.bind(a))
 		_actions.add_child(b)
 	_actions.visible = actions.size() > 0

@@ -4,12 +4,20 @@ extends Node3D
 ## Front of the monitor faces local +Z (toward the operator).
 
 const ScreenContent := preload("res://scripts/screen_content.gd")
+const TacticalMap := preload("res://scripts/map/tactical_map.gd")
+const StrategicDisplay := preload("res://scripts/strategic_display.gd")
 const CRT_SHADER := preload("res://shaders/crt.gdshader")
+## Barrel curvature passed to the shader; also used to map touches.
+const CURVATURE := 0.06
 
 @export var screen_size := Vector2(0.3, 0.225)
 @export var resolution := Vector2i(256, 192)
 @export var content: ScreenContent.Mode = ScreenContent.Mode.CONTROL
 @export var case_material := "paint_case"
+## Focus framing: look-at shift (monitor-local metres) and distance; 0 = auto.
+@export var focus_offset := Vector3.ZERO
+@export var focus_distance := 0.0
+@export var focus_elevation_deg := 0.0
 
 
 func _ready() -> void:
@@ -46,8 +54,7 @@ func _ready() -> void:
 	vp.disable_3d = true
 	vp.transparent_bg = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	var drawer := ScreenContent.new()
-	drawer.mode = content
+	var drawer := _make_content()
 	drawer.size = Vector2(resolution)
 	vp.add_child(drawer)
 	add_child(vp)
@@ -56,6 +63,7 @@ func _ready() -> void:
 	sm.shader = CRT_SHADER
 	sm.set_shader_parameter("screen_tex", vp.get_texture())
 	sm.set_shader_parameter("scanlines", float(resolution.y) * 0.5)
+	sm.set_shader_parameter("curvature", CURVATURE)
 	K.quad(self, screen_size, Vector3(0, 0, -0.015), sm)
 
 	# Tap the monitor to lean in; while focused, taps on the glass are
@@ -66,6 +74,32 @@ func _ready() -> void:
 	zone.focus_actions = drawer.actions()
 	zone.focus_fov = 50.0
 	zone.focus_distance = screen_size.y * 0.8 / tan(deg_to_rad(zone.focus_fov * 0.5)) + 0.03
+	if focus_distance > 0.0:
+		zone.focus_distance = focus_distance
+	zone.focus_offset = focus_offset - zone.position
+	zone.focus_elevation_deg = focus_elevation_deg
+	zone.surface_z = -0.015 - zone.position.z          # the glass quad's plane
 	zone.poked.connect(func(p: Vector3) -> void:
-		drawer.poke(Vector2(p.x / screen_size.x + 0.5, 0.5 - p.y / screen_size.y)))
+		drawer.poke(glass_to_texture(Vector2(p.x / screen_size.x + 0.5, 0.5 - p.y / screen_size.y))))
 	zone.action_requested.connect(drawer.do_action)
+
+
+## Texture coordinate displayed at a point of the glass (0..1 quad UV).
+## Must match the barrel curvature in crt.gdshader exactly.
+static func glass_to_texture(glass_uv: Vector2) -> Vector2:
+	var uv := glass_uv * 2.0 - Vector2.ONE
+	uv *= 1.0 + CURVATURE * uv.dot(uv)
+	return uv * 0.5 + Vector2(0.5, 0.5)
+
+
+## Screen content node for this monitor. Each implements title(),
+## actions(), do_action(name) and poke(texture_uv).
+func _make_content() -> Node2D:
+	match content:
+		ScreenContent.Mode.MAP:
+			return TacticalMap.new()
+		ScreenContent.Mode.CONTROL:
+			return StrategicDisplay.new()
+	var sc := ScreenContent.new()
+	sc.mode = content
+	return sc

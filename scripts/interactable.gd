@@ -10,15 +10,35 @@ extends Area3D
 ## operator; the camera looks at its origin from `focus_distance` away.
 
 signal activated(hit_position: Vector3)
-## A tap on the zone surface itself while focused (local position).
+## A tap on the zone surface itself while focused: the local position
+## where the tap ray meets the plane z = surface_z (e.g. a CRT's glass).
 signal poked(local_position: Vector3)
 signal action_requested(action_name: String)
+## Rotary controls: change of angle (radians, clockwise positive) as the
+## finger circles the control's on-screen centre.
+signal turned(delta_rad: float)
+## Two-axis controls (trackball): finger movement in screen pixels.
+signal dragged(delta_px: Vector2)
 
 @export var focus_zone := false
 @export var focus_title := ""
 @export var focus_distance := 0.5
 @export var focus_fov := 50.0
 @export var focus_actions: PackedStringArray = []
+## Local z of the visible surface behind the (deliberately deep) tap box.
+## Pokes are measured on this plane, not on the box face, so there is no
+## parallax between where a finger lands and what is drawn there.
+@export var surface_z := 0.0
+## "" = tap only, "rotary" = knob turned by circling, "pad" = 2-axis drag.
+## Draggable controls capture the whole touch so the camera never moves.
+@export var drag_mode := ""
+## Usable whether or not a focus zone is active (e.g. the map navigation
+## unit, which sits beside the map screen it controls).
+@export var always_active := false
+## Shifts the focus look-at point (zone-local metres) to frame neighbours.
+@export var focus_offset := Vector3.ZERO
+## Raises the eye above the zone's normal so the view looks down onto it.
+@export var focus_elevation_deg := 0.0
 
 
 ## Creates a box-shaped tap target. `size` should be generous: touch
@@ -39,8 +59,21 @@ static func make(parent: Node3D, size: Vector3, pos := Vector3.ZERO, id := "") -
 
 
 func focus_pose() -> Transform3D:
-	var eye := global_position + global_basis.z.normalized() * focus_distance
-	return Transform3D(Basis.looking_at(global_position - eye, Vector3.UP), eye)
+	var target := to_global(focus_offset)
+	var axis := global_basis.x.normalized()
+	var dir := global_basis.z.normalized().rotated(axis, -deg_to_rad(focus_elevation_deg))
+	var eye := target + dir * focus_distance
+	return Transform3D(Basis.looking_at(target - eye, Vector3.UP), eye)
+
+
+## Local point where a world-space ray meets the surface plane, or null.
+func surface_point(origin: Vector3, dir: Vector3) -> Variant:
+	var o := to_local(origin)
+	var d := to_local(origin + dir) - o
+	if absf(d.z) < 1e-6:
+		return null
+	var t := (surface_z - o.z) / d.z
+	return o + d * t if t > 0.0 else null
 
 
 ## Nearest enclosing focus zone (excluding self), or null.

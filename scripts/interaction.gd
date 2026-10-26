@@ -9,10 +9,16 @@ extends Node
 @export var hud: CanvasLayer
 
 var _zone: Interactable = null
+var _drag: Interactable = null
+var _drag_center := Vector2.ZERO
+var _drag_angle := NAN
 
 
 func _ready() -> void:
 	camera.tap_handler = _on_tap
+	camera.press_handler = _on_press
+	camera.drag_handler = _on_drag
+	camera.release_handler = _on_release
 	camera.unfocus_requested.connect(exit_focus)
 	hud.back_pressed.connect(exit_focus)
 	hud.action_pressed.connect(_on_action)
@@ -54,7 +60,8 @@ func _on_tap(screen_pos: Vector2) -> bool:
 	# Focused: controls inside the zone first, then the zone surface.
 	var inner: Array[Dictionary] = []
 	for h in hits:
-		if h.collider != _zone and not h.collider.focus_zone and _zone._contains(h.collider):
+		var c: Interactable = h.collider
+		if c != _zone and not c.focus_zone and (_zone._contains(c) or c.always_active):
 			inner.append(h)
 	if not inner.is_empty():
 		var hit := _best(inner, screen_pos)
@@ -62,9 +69,57 @@ func _on_tap(screen_pos: Vector2) -> bool:
 		return true
 	for h in hits:
 		if h.collider == _zone:
-			_zone.poked.emit(_zone.to_local(h.position))
+			var p: Variant = _zone.surface_point(camera.project_ray_origin(screen_pos), camera.project_ray_normal(screen_pos))
+			if p != null:
+				_zone.poked.emit(p)
 			return true
 	return false
+
+
+## Capture a press that lands on a draggable control usable right now.
+func _on_press(screen_pos: Vector2) -> bool:
+	var usable: Array[Dictionary] = []
+	for h in _hits(screen_pos):
+		var c: Interactable = h.collider
+		if c.focus_zone:
+			continue
+		if c.always_active or (_zone == null and c.parent_zone() == null) or (_zone and _zone._contains(c)):
+			usable.append(h)
+	if usable.is_empty():
+		return false
+	var best: Interactable = _best(usable, screen_pos).collider
+	if best.drag_mode == "":
+		return false
+	_drag = best
+	_drag_center = camera.unproject_position(best.global_position)
+	_drag_angle = NAN
+	_update_angle(screen_pos)
+	return true
+
+
+func _on_drag(screen_pos: Vector2, relative: Vector2) -> void:
+	if _drag == null:
+		return
+	if _drag.drag_mode == "pad":
+		_drag.dragged.emit(relative)
+		return
+	var before := _drag_angle
+	_update_angle(screen_pos)
+	if not is_nan(before) and not is_nan(_drag_angle):
+		_drag.turned.emit(wrapf(_drag_angle - before, -PI, PI))
+
+
+func _on_release(screen_pos: Vector2, moved: bool) -> void:
+	if _drag and not moved:
+		_drag.activated.emit(_drag.global_position)   # a tap on the control
+	_drag = null
+
+
+## Angle of the finger around the control's centre (screen y points down,
+## so increasing angle is clockwise). Ignored very near the centre.
+func _update_angle(screen_pos: Vector2) -> void:
+	var v := screen_pos - _drag_center
+	_drag_angle = v.angle() if v.length() > 12.0 else NAN
 
 
 ## Every Interactable along the tap ray, nearest first. Generous touch

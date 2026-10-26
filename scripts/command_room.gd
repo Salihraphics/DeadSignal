@@ -21,6 +21,10 @@ const SHAFT_HALF_W := 1.8
 const SHAFT_BACK_Z := -5.4
 
 var _shaft_beacon: MeshInstance3D
+var _key_light: SpotLight3D
+var _key_energy := 0.0
+var _flicker_until := 0.0
+var _alarm := false
 var _t := 0.0
 
 
@@ -38,8 +42,22 @@ func _process(delta: float) -> void:
 	# Slow rotating-beacon pulse in the shaft: a hint that the facility is live.
 	_t += delta
 	if _shaft_beacon:
-		var on := fmod(_t, 2.4) < 0.25
+		var on := fmod(_t, 0.5) < 0.25 if _alarm else fmod(_t, 2.4) < 0.25
 		_shaft_beacon.material_override = BuildKit.lamp(BuildKit.RED, on, 3.0)
+	if _t < _flicker_until:
+		_key_light.light_energy = _key_energy * (0.55 + 0.45 * absf(sin(_t * 41.0) * sin(_t * 17.0)))
+	elif _key_light and _key_light.light_energy != _key_energy:
+		_key_light.light_energy = _key_energy
+
+
+## Brief unsteady lighting (launch vibration through the fittings).
+func flicker(duration: float) -> void:
+	_flicker_until = _t + duration
+
+
+## Launch alarm: the shaft beacon flashes fast while active.
+func set_alarm(on: bool) -> void:
+	_alarm = on
 
 
 func _build_shell() -> void:
@@ -123,7 +141,7 @@ func _build_shaft() -> void:
 	var near_z := FRONT_Z - FRONT_WALL
 	var depth := near_z - SHAFT_BACK_Z
 	var mid_z := (near_z + SHAFT_BACK_Z) * 0.5
-	var bottom := -6.0
+	var bottom := -12.0     # deep enough to hold the whole missile below the sill
 	var top := 8.0
 	var h := top - bottom
 	var cy := (top + bottom) * 0.5
@@ -131,7 +149,7 @@ func _build_shaft() -> void:
 	K.box(self, Vector3(SHAFT_HALF_W * 2, h, 0.3), Vector3(0, cy, SHAFT_BACK_Z - 0.15), concrete)
 	for s in [-1, 1]:
 		K.box(self, Vector3(0.3, h, depth), Vector3(s * (SHAFT_HALF_W + 0.15), cy, mid_z), concrete)
-	K.box(self, Vector3(SHAFT_HALF_W * 2, 0.4, depth), Vector3(0, top + 0.2, mid_z), K.mat("metal_dark"))
+	# The shaft top is closed by hatch doors owned by MissileLaunch.
 	K.box(self, Vector3(SHAFT_HALF_W * 2, 0.2, depth), Vector3(0, bottom, mid_z), K.mat("metal_dark"))
 
 	# Vertical guide rails on the back wall.
@@ -140,7 +158,7 @@ func _build_shaft() -> void:
 		K.box(self, Vector3(0.05, h, 0.1), Vector3(s * 0.7, cy, SHAFT_BACK_Z + 0.2), K.mat("steel"))
 	# Ring beams at regular intervals.
 	for i in range(8):
-		var y := bottom + 1.0 + i * 1.6
+		var y := -5.0 + i * 1.6
 		K.box(self, Vector3(SHAFT_HALF_W * 2, 0.12, 0.12), Vector3(0, y, SHAFT_BACK_Z + 0.06), K.mat("paint_grey"))
 	# Cable conduits and a hazard band.
 	for x in [-1.3, -1.2, 1.25]:
@@ -213,6 +231,7 @@ func _build_lights() -> void:
 	# Few lights on purpose: the Compatibility renderer draws an extra pass
 	# per light per object, so every light has a small range and a job.
 	var key := SpotLight3D.new()                      # ceiling lamp over desk
+	_key_light = key
 	key.light_color = Color(1.0, 0.86, 0.68)
 	key.light_energy = 2.1
 	key.spot_range = 4.5
@@ -223,6 +242,7 @@ func _build_lights() -> void:
 	key.position = Vector3(0, HEIGHT - 0.45, -0.85)
 	key.rotation_degrees = Vector3(-72, 0, 0)
 	add_child(key)
+	_key_energy = key.light_energy
 
 	var fill := OmniLight3D.new()                     # soft cool fill, readability
 	fill.light_color = Color(0.62, 0.7, 0.8)

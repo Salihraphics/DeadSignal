@@ -34,6 +34,13 @@ const VIEW_ORDER := ["left", "forward", "right"]
 
 ## Called with the screen position of each tap; return true if used.
 var tap_handler: Callable
+## Called on press; return true to capture the touch for a control. While
+## captured, moves go to drag_handler(pos, relative) and the release to
+## release_handler(pos, moved). The view never turns during a capture.
+var press_handler: Callable
+var drag_handler: Callable
+var release_handler: Callable
+var _captured := false
 
 var _target := Vector2.ZERO         # x = yaw, y = pitch (degrees)
 var _current := Vector2.ZERO
@@ -47,6 +54,8 @@ var _focus_on := false
 var _focus_pose := Transform3D.IDENTITY
 var _focus_fov := 50.0
 var _focus_w := 0.0                 # 0 = seated view, 1 = fully focused
+var _shake_amp := 0.0               # degrees, decays over time
+var _shake_decay := 1.0
 
 
 func _ready() -> void:
@@ -62,12 +71,23 @@ func _process(delta: float) -> void:
 	var k := 1.0 - exp(-smoothing * delta)
 	_current = _current.lerp(_target, k)
 	_focus_w = lerpf(_focus_w, 1.0 if _focus_on else 0.0, 1.0 - exp(-7.0 * delta))
+	_shake_amp = maxf(0.0, _shake_amp - _shake_decay * delta)
 	_apply()
+
+
+## Room vibration: `amplitude` degrees, fading out over `duration` seconds.
+## A stronger shake replaces a weaker one; it never moves the seat.
+func shake(amplitude: float, duration: float) -> void:
+	if amplitude >= _shake_amp:
+		_shake_amp = amplitude
+		_shake_decay = amplitude / maxf(duration, 0.01)
 
 
 func _apply() -> void:
 	# Barely perceptible breathing sway keeps the seated view alive.
 	var sway := Vector2(sin(_t * 0.37) * 0.12, sin(_t * 0.61) * 0.09)
+	if _shake_amp > 0.0:
+		sway += Vector2(sin(_t * 61.0) * cos(_t * 23.0), sin(_t * 53.0 + 1.3)) * _shake_amp
 	var euler := Vector3(_current.y + sway.y, _current.x + sway.x, 0.0) * (PI / 180.0)
 	var seated := Transform3D(Basis.from_euler(euler), _home_pos)
 	if _focus_w < 0.001:
@@ -126,11 +146,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			_press_pos = event.position
 			_dragged = false
+			_captured = press_handler.is_valid() and press_handler.call(event.position)
+		elif _captured:
+			_captured = false
+			release_handler.call(event.position, _dragged)
 		elif not _dragged:
 			_on_tap(event.position)
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 		if event.position.distance_to(_press_pos) > tap_slop_px:
 			_dragged = true
+		if _captured:
+			drag_handler.call(event.position, event.relative)
+			return
 		if _focus_on:
 			return
 		var deg_per_px := drag_degrees_per_screen / get_viewport().get_visible_rect().size.y
