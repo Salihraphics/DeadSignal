@@ -117,9 +117,14 @@ func readiness_text() -> String:
 
 ## Prompt line: an unanswered order comes first, then the next launch step.
 func prompt_text() -> String:
+	# A pending launch confirmation is time-limited: it comes first.
+	if state.awaiting_confirmation():
+		return "> CONFIRM LAUNCH %s %s: PRESS MASTER AGAIN" % [state.target_ref(), state.ammo]
 	if orders and orders.is_pending():
 		return "> ORDER %s - REPLY REQUIRED" % orders.order.id
 	var m: Array = state.missing()
+	if not m.is_empty() and m[0] == state.COVER_STEP:
+		return "> NEXT: PRESS MASTER (LIFTS COVER TO CONFIRM)"
 	return "> NEXT: " + (m[0] if not m.is_empty() else "PRESS MASTER TO LAUNCH")
 
 

@@ -44,6 +44,10 @@ var abort_reason := ""
 ## In a run, launching needs authority from an accepted order:
 ## {order, grid, max_ammo}; cleared after one launch or by the next order.
 var require_authority := false
+var cover_opened_ms := 0
+const COVER_STEP := "PRESS MASTER TO CONFIRM"
+const CONFIRM_WINDOW_S := 10.0
+const MASTER_DEBOUNCE_MS := 250
 var authority: Dictionary = {}
 
 
@@ -186,6 +190,9 @@ func clear_selection() -> bool:
 func _leave_finished_state() -> void:
 	if launch_state in [Launch.COMPLETE, Launch.ABORTED]:
 		_set_launch(Launch.IDLE)
+	# A pending confirmation referred to the old selection: withdraw it.
+	if cover_open and not locked():
+		cover_open = false
 
 
 # --- Arming and launch ----------------------------------------------------------------
@@ -203,7 +210,53 @@ func set_cover(open: bool) -> void:
 	if not open and launch_state == Launch.SEQUENCE:
 		abort("MASTER COVER CLOSED")
 	cover_open = open
+	if open:
+		cover_opened_ms = Time.get_ticks_msec()
 	selection_changed.emit()
+
+
+## Launch firing flow (the one place it is defined):
+##   1. Prerequisites: authority (in a run), ammunition, grid, shaft,
+##      resources, KEY armed. Missing ones are reported; nothing opens.
+##   2. MASTER, first press: lifts the cover = confirmation of exactly the
+##      current grid and ammunition (shown on the control CRT).
+##   3. MASTER, second press within CONFIRM_WINDOW_S: starts the countdown
+##      (ABORT, KEY to SAFE or closing the cover still stop it).
+##   Cancelling (timeout, KEY to SAFE, a selection change, ABORT before the
+##   countdown) closes the cover and keeps the selection.
+func press_master() -> String:
+	if locked():
+		return "SEQUENCE ALREADY RUNNING"
+	if not cover_open:
+		var blockers := launch_blockers()
+		if not blockers.is_empty():
+			return blockers[0]
+		set_cover(true)
+		return "CONFIRM"
+	# A second activation in the same instant (duplicate touch) is ignored.
+	if Time.get_ticks_msec() - cover_opened_ms < MASTER_DEBOUNCE_MS:
+		return "CONFIRM"
+	return request_launch()
+
+
+## Everything that blocks a launch except the confirmation cover.
+func launch_blockers() -> Array[String]:
+	var m := missing()
+	m.erase(COVER_STEP)
+	return m
+
+
+## The cover is up and waiting for the confirming second press.
+func awaiting_confirmation() -> bool:
+	return cover_open and not locked() and launch_blockers().is_empty()
+
+
+## Withdraws an unconfirmed launch (cover closes, selection kept).
+func cancel_confirmation() -> bool:
+	if not cover_open or locked():
+		return false
+	set_cover(false)
+	return true
 
 
 ## Reasons a launch cannot start, in the order the operator should act.
@@ -228,7 +281,7 @@ func missing() -> Array[String]:
 	if not key_armed:
 		m.append("TURN KEY TO ARM")
 	if not cover_open:
-		m.append("LIFT MASTER COVER")
+		m.append(COVER_STEP)
 	return m
 
 
@@ -321,7 +374,7 @@ func status_label() -> String:
 		Launch.REPORT_PENDING: return "REPORT PENDING"
 		Launch.COMPLETE: return "COMPLETE"
 		Launch.ABORTED: return "ABORTED"
-	if missing().is_empty():
+	if launch_blockers().is_empty():
 		return "READY"
 	if has_target():
 		return "TARGET SELECTED"

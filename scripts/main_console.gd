@@ -44,6 +44,10 @@ func _process(delta: float) -> void:
 	var idle: bool = not state.locked()
 	BuildKit.set_mat(_blink_lamp, BuildKit.lamp(BuildKit.AMBER, idle and fmod(_t, 1.6) < 0.8))
 	BuildKit.set_mat(_crit_lamp, BuildKit.lamp(BuildKit.RED, not idle and fmod(_t, 0.5) < 0.25, 3.0))
+	# An unconfirmed launch lapses: the cover drops back after the window.
+	if state.cover_open and idle and Time.get_ticks_msec() - state.cover_opened_ms > state.CONFIRM_WINDOW_S * 1000.0:
+		state.set_cover(false)
+		_toast("LAUNCH NOT CONFIRMED  -  COVER CLOSED")
 
 
 func _build_desk() -> void:
@@ -161,23 +165,28 @@ func _build_control_panel() -> void:
 			K.label(p, "ABORT", Vector3(x, 0.006, z + 0.04), 0.012, Color(0.45, 0.04, 0.02), text)
 			area.activated.connect(func(_hit: Vector3) -> void:
 				_press(cap)
-				_toast("SEQUENCE ABORTED" if state.abort() else "NO SEQUENCE TO ABORT"))
+				if state.abort():
+					_toast("SEQUENCE ABORTED")
+				elif state.cancel_confirmation():
+					_toast("LAUNCH CANCELLED  -  SELECTION KEPT")
+				else:
+					_toast("NO SEQUENCE TO ABORT"))
 		else:
 			area.activated.connect(_press_button.bind(cap, rest, K.lamp(color, true, 2.6)))
 
 
+## MASTER: see StrategicState.press_master for the whole firing flow.
 func _on_master(_hit: Vector3) -> void:
-	if not state.cover_open:
-		if state.locked():
-			return
-		state.set_cover(true)
-		_toast("MASTER COVER OPEN")
-		return
-	var why: String = state.request_launch()
-	if why == "":
-		_toast("LAUNCH SEQUENCE STARTED")
-	elif why != "SEQUENCE ALREADY RUNNING":
-		_toast("LAUNCH INHIBITED: " + why)
+	var r: String = state.press_master()
+	match r:
+		"":
+			_toast("LAUNCH SEQUENCE STARTED  -  ABORT AVAILABLE")
+		"CONFIRM":
+			_toast("CONFIRM LAUNCH %s %s  -  PRESS MASTER AGAIN" % [state.target_ref(), state.ammo])
+		"SEQUENCE ALREADY RUNNING":
+			pass
+		_:
+			_toast("LAUNCH INHIBITED: " + r)
 
 
 ## Moves key, cover and lamps to match the shared state.
