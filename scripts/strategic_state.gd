@@ -162,8 +162,9 @@ func target_center() -> Vector2:
 func confirm_target() -> bool:
 	if locked():
 		return false
-	target_cell = MapGrid.cell_of(cursor)
-	_leave_finished_state()
+	var cell := MapGrid.cell_of(cursor)
+	_leave_finished_state(cell != target_cell)
+	target_cell = cell
 	selection_changed.emit()
 	return true
 
@@ -171,8 +172,8 @@ func confirm_target() -> bool:
 func set_ammo(id: String) -> bool:
 	if locked() or not Ammunition.TYPES.has(id):
 		return false
+	_leave_finished_state(id != ammo)
 	ammo = id
-	_leave_finished_state()
 	selection_changed.emit()
 	return true
 
@@ -182,16 +183,17 @@ func clear_selection() -> bool:
 		return false
 	ammo = ""
 	target_cell = Vector2i(-1, -1)
-	_leave_finished_state()
+	_leave_finished_state(true)
 	selection_changed.emit()
 	return true
 
 
-func _leave_finished_state() -> void:
+func _leave_finished_state(changed: bool) -> void:
 	if launch_state in [Launch.COMPLETE, Launch.ABORTED]:
 		_set_launch(Launch.IDLE)
 	# A pending confirmation referred to the old selection: withdraw it.
-	if cover_open and not locked():
+	# Re-selecting the same grid or ammunition changes nothing.
+	if changed and cover_open and not locked():
 		cover_open = false
 
 

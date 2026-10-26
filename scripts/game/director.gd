@@ -13,17 +13,25 @@ extends Node
 ## Opened directly without a run (editor / tests), the room is a sandbox:
 ## no scenario, the legacy first order only.
 
+const PacingDefault := preload("res://data/pacing.tres")
 const PRINTER_LEAD := 2.2       # printer motor heard before the text lands
 const ALERT_LEAD := 0.8
 const RADIO_LEAD := 1.2
 const RECEIPT_AFTER := 50.0     # Central acknowledges a confirmation request
 const SILENCE_AFTER := 200.0    # ...and then nothing
 
+## All pacing comes from here (data/pacing.tres by default).
+@export var pacing: PacingConfig
+
 var strategy: Node
 var orders: Node
 var comms: Node
 var _fade: ColorRect
-var _cueing := {}               # beats whose cue is playing (this session)
+var _cueing := {}               # beats queued or whose cue is playing (this session)
+var _queue: Array = []          # pending notifications: [key, sound, lead, effect, priority]
+var _next_cue_at := 0.0         # Run.elapsed before which no new cue starts
+var _order_t: Array[float] = []
+var _next_rumble := -1.0
 var _ending := ""
 
 
@@ -37,6 +45,9 @@ func _ready() -> void:
 	strategy = get_tree().get_first_node_in_group("strategy")
 	orders = get_tree().get_first_node_in_group("orders")
 	comms = get_tree().get_first_node_in_group("comms")
+	if pacing == null:
+		pacing = PacingDefault
+	_order_t = Scenario.order_times(pacing)
 	if not Run.active:
 		return
 	strategy.require_authority = true
@@ -62,24 +73,77 @@ func _process(_delta: float) -> void:
 		return
 	var t := Run.elapsed
 	for b in Scenario.BEATS:
-		if t >= b.t and not Run.fired.has(b.id) and not _cueing.has(b.id):
+		if t >= b.t * pacing.silent_front_scale and not Run.fired.has(b.id) and not _cueing.has(b.id):
 			_fire(b)
-	for o in Scenario.ORDER_TIMES:
-		var id: String = OrderCatalog.get_order(o[1]).id
+	for i in range(Scenario.ORDER_SEQUENCE.size()):
+		var id: String = Scenario.ORDER_SEQUENCE[i]
 		var key := "order_" + id
-		if t >= o[0] and not Run.fired.has(key) and not _cueing.has(key):
-			_deliver_order(key, o[1])
+		if t >= _order_t[i] and not Run.fired.has(key) and not _cueing.has(key):
+			_deliver_order(key, OrderCatalog.index_of(id))
 		# Reply deadline (deterministic: counted from the order's slot).
-		if orders.is_pending() and orders.order.id == id and t >= o[0] + Scenario.ORDER_DEADLINE:
+		if orders.is_pending() and orders.order.id == id and t >= _order_t[i] + Scenario.deadline(i, pacing):
 			orders.expire()
+	for e in Scenario.EVENTS:
+		var b: Dictionary = e[2]
+		if t >= _order_t[e[0]] + e[1] and not Run.fired.has(b.id) and not _cueing.has(b.id):
+			_fire(b)
 	for c in Scenario.CONSEQUENCES:
-		if t >= c[0] and not Run.applied.has(c[1]):
-			Run.applied[c[1]] = Run.hhmm()
-			call("_" + c[1].to_lower())
+		if t >= _order_t[c[1]] + pacing.consequence_offset + c[2] and not Run.applied.has(c[0]):
+			Run.applied[c[0]] = Run.hhmm()
+			call("_" + c[0].to_lower())
 			Run.save()
 	_follow_requests(t)
-	if t >= Scenario.ASSESSMENT_T and not orders.is_pending() and Run.fired.has("order_SC-007"):
+	_run_queue(t)
+	_pressure(t)
+	if t >= Scenario.assessment_time(pacing) and not orders.is_pending() and Run.fired.has("order_" + Scenario.ORDER_SEQUENCE[-1]):
 		_begin_ending(assess())
+
+
+## Notifications start one at a time, at least `min_cue_gap` apart, orders
+## first; so even when events fall close together the operator hears and
+## sees them in turn.
+func _run_queue(t: float) -> void:
+	if _queue.is_empty() or t < _next_cue_at:
+		return
+	_queue.sort_custom(func(a: Array, b: Array) -> bool: return a[4] > b[4])
+	var c: Array = _queue.pop_front()
+	var key: String = c[0]
+	if c[1] != "":
+		Sfx.play(c[1], -4.0 if c[1] == "printer" else -8.0)
+	if (c[5] as Callable).is_valid():
+		(c[5] as Callable).call()
+	_next_cue_at = t + c[2] + pacing.min_cue_gap
+	var effect: Callable = c[3]
+	get_tree().create_timer(c[2]).timeout.connect(func() -> void:
+		if _ending != "":
+			return
+		Run.fired[key] = Run.hhmm()
+		_cueing.erase(key)
+		effect.call()
+		Run.save())
+
+
+## The war closing in: distant rumbles and an unsteady light, more often
+## as the order phase goes on and the front weakens. Atmosphere only.
+func _pressure(t: float) -> void:
+	if not pacing.pressure_ambience or _order_t.is_empty() or t < _order_t[0]:
+		return
+	var span := maxf(_order_t[-1] - _order_t[0], 1.0)
+	var f := clampf((t - _order_t[0]) / span, 0.0, 1.0)
+	f = clampf(f + (50.0 - Run.stability) / 100.0, 0.0, 1.0)
+	var every := lerpf(pacing.rumble_every_start, pacing.rumble_every_end, f)
+	if _next_rumble < 0.0:
+		_next_rumble = t + every * 0.5
+	if t < _next_rumble:
+		return
+	_next_rumble = t + every * randf_range(0.8, 1.2)
+	Sfx.play("launch_rumble", lerpf(-26.0, -14.0, f), randf_range(0.45, 0.6))
+	var room := get_parent().get_node_or_null("CommandRoom")
+	if room:
+		room.flicker(lerpf(0.3, 0.9, f))
+	# Too much at once: the operator says so (rarely).
+	if orders.is_pending() and Run.unread_count() >= 2:
+		Dialogue.trigger("pressure", {}, false)
 
 
 # --- Beats -----------------------------------------------------------------------------------
@@ -93,33 +157,26 @@ func _fire(b: Dictionary) -> void:
 				if b.get("approves", false):
 					_approve())
 		"call":
-			Run.fired[b.id] = Run.hhmm()
-			comms.ring(b.call)
+			# The bell itself is the cue.
+			_cue(b.id, "", 0.0, func() -> void: comms.ring(b.call))
 		"radio":
 			var logged: bool = not (Run.flag("sc003_accepted") and b.item.channel == "11.200")
-			comms.radio_traffic(b.item, logged)
-			_cueing[b.id] = true
-			get_tree().create_timer(RADIO_LEAD).timeout.connect(func() -> void:
-				Run.fired[b.id] = Run.hhmm()
+			_cue(b.id, "", RADIO_LEAD, func() -> void:
 				if logged:
-					Run.add_traffic(b.item)
-				Run.save())
+					Run.add_traffic(b.item), 0, func() -> void: comms.radio_traffic(b.item, logged))
 		"phase":
 			Run.fired[b.id] = Run.hhmm()
 	Run.save()
 
 
-## Plays the cue sound now; the effect lands `lead` seconds later.
-func _cue(key: String, sound: String, lead: float, effect: Callable) -> void:
+## Queues a notification: its cue sound (or `on_start`) plays when its
+## turn comes; the effect lands `lead` seconds later. Higher `priority`
+## goes first (orders 2, everything else 0).
+func _cue(key: String, sound: String, lead: float, effect: Callable, priority := 0, on_start := Callable()) -> void:
+	if _cueing.has(key) or Run.fired.has(key):
+		return
 	_cueing[key] = true
-	Sfx.play(sound, -4.0 if sound == "printer" else -8.0)
-	get_tree().create_timer(lead).timeout.connect(func() -> void:
-		if _ending != "":
-			return
-		Run.fired[key] = Run.hhmm()
-		_cueing.erase(key)
-		effect.call()
-		Run.save())
+	_queue.append([key, sound, lead, effect, priority, on_start])
 
 
 ## SR-0412: the status is approved with no new field report. Every open
@@ -133,17 +190,18 @@ func _approve() -> void:
 
 
 func _deliver_order(key: String, index: int) -> void:
-	if orders.is_pending():
-		orders.expire()
-	strategy.authority = {}                  # an earlier authority lapses
-	strategy.selection_changed.emit()
 	_cue(key, "printer", PRINTER_LEAD, func() -> void:
+		if orders.is_pending():
+			orders.expire()                  # the next order replaces it
+		if not strategy.locked():
+			strategy.authority = {}          # an earlier authority lapses
+			strategy.selection_changed.emit()
 		orders.deliver(index)
 		Run.add_traffic({"id": orders.order.id, "kind": "ORDER", "source": orders.order.fields[1][1],
 			"source_id": orders.order.id, "verification": "AUTHENTICATED", "subject": orders.order.fields[3][1],
 			"body": orders.order.body})
 		Run.mark_read(orders.order.id)
-		Dialogue.trigger("order"))
+		Dialogue.trigger("order"), 2)
 
 
 # --- Orders and decisions ----------------------------------------------------------------------
@@ -218,6 +276,9 @@ func forward(report_id: String) -> void:
 
 func call_answered(c: Dictionary) -> void:
 	Run.calls_answered += 1
+	if c.has("on_answer") and not Run.applied.has("answer_" + c.id):
+		Run.applied["answer_" + c.id] = Run.hhmm()
+		Run.adjust(c.on_answer)
 	var it := Run.add_traffic({"id": c.id, "kind": "CALL", "source": c.caller, "source_id": "LINE 1",
 		"verification": "VOICE (UNRECORDED)", "subject": "CALL ANSWERED", "body": [c.summary]})
 	it.read = true
@@ -336,6 +397,50 @@ func _c5() -> void:
 		_news({"id": "CN-05", "kind": "NOTICE", "source": "STRATEGIC COMMAND, VARNESK", "source_id": "SC DUTY",
 			"verification": "AUTHENTICATED", "subject": "ALLOCATION RECEIVED - OSTREV FRONT",
 			"body": ["THE TRANSFERRED ALLOCATION HAS BEEN RECEIVED ON THE OSTREV FRONT."]})
+
+
+## SC-008 (line 3 for Central only): K-2 tries to get through.
+func _c8() -> void:
+	if Run.decision_of("SC-008") == "ACCEPTED":
+		Run.adjust({"integrity": -3})
+		_news({"id": "LR-0705", "kind": "NOTICE", "source": "LINE 3 SWITCH, K-4", "source_id": "K-4 AUTO",
+			"verification": "INTERNAL", "subject": "LINE 3: CALL FROM K-2 REJECTED",
+			"body": ["INCOMING CALL ON LINE 3 FROM STATION K-2 REJECTED UNDER SC-008.", "DURATION OF ATTEMPT: 41 SECONDS. LOGGED."]}, "crt_alert")
+		get_tree().create_timer(6.0).timeout.connect(func() -> void: Dialogue.trigger("rejected"))
+	else:
+		_cue("call_k2", "", 0.0, func() -> void: comms.ring({
+			"id": "CL-05", "caller": "K-2 (LINE 3)", "summary": "K-2: NO ORDERS SINCE MIDNIGHT. ARMOUR AT THE LESNA FORD.",
+			"on_answer": {"stability": 4, "integrity": 3},
+			"lines": ["K-4, this is K-2 on the reserve line. We have had no orders since midnight.", "There is armour at the ford. Tell them. Tell anyone."]}))
+
+
+## SC-009 (fire on RS-47 on a single-source Central assessment).
+func _c9() -> void:
+	var d := Run.decision_of("SC-009")
+	var e := _launch_for("SC-009")
+	if d == "ACCEPTED" and not e.is_empty():
+		Run.adjust({"integrity": -3, "trust": 2})
+		_news({"id": "FR-2327", "kind": "FIELD", "source": "OBSERVATION POST K1", "source_id": "OP K1",
+			"verification": "VERIFIED (FIELD)", "subject": "RS-47: AFTER ACTION",
+			"body": ["RESULT AT RS-47 AS REPORTED: %s." % str(e.result), "NO COLUMN OBSERVED AT RS-47 BEFORE OR AFTER THE STRIKE."]})
+	elif d == "ACCEPTED":
+		Run.adjust({"trust": -6})
+		_news({"id": "CN-09", "kind": "NOTICE", "source": "STRATEGIC COMMAND, VARNESK", "source_id": "SC DUTY",
+			"verification": "AUTHENTICATED", "subject": "SC-009: NOT EXECUTED",
+			"body": ["FIRE MISSION SC-009 WAS ACKNOWLEDGED AND NOT EXECUTED.", "THE DISCREPANCY HAS BEEN RECORDED."]})
+	else:
+		_news({"id": "FR-2327", "kind": "FIELD", "source": "OBSERVATION POST K1", "source_id": "OP K1",
+			"verification": "VERIFIED (FIELD)", "subject": "RS-47: NO COLUMN OBSERVED",
+			"body": ["NO MOVEMENT OBSERVED AT RS-47 THIS SHIFT."]})
+
+
+## SC-010 (certify the shift's fire missions as Central reports them).
+func _c10() -> void:
+	if Run.decision_of("SC-010") != "ACCEPTED" and not strategy.events.is_empty():
+		Run.adjust({"trust": -3})
+		_news({"id": "CN-10", "kind": "NOTICE", "source": "CENTRAL STAFF, VARNESK", "source_id": "CS-OPS/2",
+			"verification": "AUTHENTICATED", "subject": "POST RECORDS REQUESTED",
+			"body": ["THE FIRE MISSION RECORDS OF POST K-4 WILL BE COLLECTED AT THE END OF SHIFT."]})
 
 
 ## SC-006 (fire on RS-37, observed and verified).

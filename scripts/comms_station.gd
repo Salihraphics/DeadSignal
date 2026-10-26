@@ -182,9 +182,15 @@ func _answer() -> void:
 	var c := _call
 	_call = {}
 	Subtitles.clear()                    # the caller speaks over everything
+	var total := 0.0
 	for i in range(c.lines.size()):
 		Subtitles.say(c.caller, c.lines[i], 0.0, true)
+		total += Subtitles.reading_time(c.lines[i])
 	get_tree().call_group("director", "call_answered", c)
+	# The caller rings off; the handset goes back on the cradle.
+	get_tree().create_timer(total + 0.5).timeout.connect(func() -> void:
+		if _phone_state.lifted and _call.is_empty():
+			_lift_phone.call(false))
 
 
 ## Simulated tap (tests and the Director's answer helper).

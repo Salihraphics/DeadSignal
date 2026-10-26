@@ -143,6 +143,60 @@ const ORDERS := [
 		"footer": "AUTH: CENTRAL STAFF, CS-OPS/2",
 		"effects": {"ACCEPTED": {"trust": 3}, "REFUSED": {"trust": -6, "integrity": 4}},
 	},
+	{
+		"id": "SC-008",
+		"header": ["NORVAK STRATEGIC COMMAND", "PRIORITY  -  RESTRICTED"],
+		"fields": [
+			["PRECEDENCE", "PRIORITY"],
+			["FROM", "SIGNALS DIRECTORATE, VARNESK"],
+			["TO", "LAUNCH CONTROL POST K-4"],
+			["SUBJECT", "LINE 3 (RESERVE): CENTRAL TRAFFIC ONLY"],
+		],
+		"body": [
+			"RESERVE LINE 3 IS RESTRICTED TO TRAFFIC FROM CENTRAL WITH IMMEDIATE EFFECT.",
+			"CALLS FROM FORWARD POSTS ON LINE 3 ARE TO BE REJECTED AND LOGGED.",
+			"THE MEASURE CONSERVES KEY MATERIAL. IT IS TEMPORARY.",
+		],
+		"footer": "AUTH: SIGNALS DIRECTORATE, DUTY DESK",
+		"effects": {"ACCEPTED": {"trust": 3, "integrity": -5}, "REFUSED": {"trust": -5}},
+	},
+	{
+		"id": "SC-009",
+		"header": ["NORVAK STRATEGIC COMMAND", "FLASH TRAFFIC  -  SECRET"],
+		"fields": [
+			["PRECEDENCE", "FLASH"],
+			["FROM", "STRATEGIC COMMAND, VARNESK"],
+			["TO", "LAUNCH CONTROL POST K-4"],
+			["SUBJECT", "FIRE MISSION - GRID RS-47"],
+			["BASIS", "CENTRAL ASSESSMENT (SINGLE SOURCE)"],
+		],
+		"body": [
+			"CENTRAL ASSESSES A DRAVONYAN SUPPLY COLUMN AT GRID RS-47, EAST OF THE LESNA.",
+			"YOU ARE AUTHORISED TO ENGAGE GRID RS-47. CATEGORY NOT TO EXCEED MEDIUM.",
+			"THE ASSESSMENT IS NOT CONFIRMED BY ANY OBSERVATION POST.",
+			"ACKNOWLEDGE OR REFUSE BY RETURN.",
+		],
+		"footer": "AUTH: COL. A. RENSKOV, DUTY OFFICER",
+		"authorizes": {"grid": "RS-47", "max_ammo": "MEDIUM"},
+		"effects": {"ACCEPTED": {"trust": 4}, "REFUSED": {"trust": -5, "integrity": 3}},
+	},
+	{
+		"id": "SC-010",
+		"header": ["NORVAK STRATEGIC COMMAND", "ROUTINE  -  RESTRICTED"],
+		"fields": [
+			["PRECEDENCE", "ROUTINE"],
+			["FROM", "CENTRAL STAFF, VARNESK"],
+			["TO", "LAUNCH CONTROL POST K-4"],
+			["SUBJECT", "CERTIFICATION OF FIRE MISSIONS"],
+		],
+		"body": [
+			"CERTIFY THAT ALL FIRE MISSIONS OF THIS SHIFT WERE CARRIED OUT AS ORDERED",
+			"AND THAT THEIR RESULTS ARE AS REPORTED BY CENTRAL.",
+			"POST RECORDS THAT DIFFER ARE TO BE WITHDRAWN.",
+		],
+		"footer": "AUTH: CENTRAL STAFF, CS-OPS/2",
+		"effects": {"ACCEPTED": {"trust": 4, "integrity": -6}, "REFUSED": {"trust": -6, "integrity": 4}},
+	},
 ]
 
 
