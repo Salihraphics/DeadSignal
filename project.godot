@@ -11,12 +11,21 @@ config_version=5
 [application]
 
 config/name="Dead Signal"
-config/description="Prototype: command room, first order, tactical map and launch."
-run/main_scene="res://scenes/main.tscn"
+config/description="A seated command-room game set in a fictional 1985 Cold War."
+run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 boot_splash/bg_color=Color(0, 0, 0, 1)
 config/icon="res://assets/icon.png"
 config/quit_on_go_back=false
+
+[autoload]
+
+Settings="*res://scripts/core/settings.gd"
+Graphics="*res://scripts/graphics_settings.gd"
+Sfx="*res://scripts/core/audio.gd"
+Subtitles="*res://scripts/core/subtitles.gd"
+Run="*res://scripts/core/run_state.gd"
+Dialogue="*res://scripts/core/dialogue.gd"
 
 [display]
 

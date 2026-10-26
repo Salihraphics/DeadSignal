@@ -27,6 +27,10 @@ const VIEW_ORDER := ["left", "forward", "right"]
 @export var drag_degrees_per_screen := 100.0
 ## Off: the view turns the way the finger moves. On: drag the scene instead.
 @export var invert_drag := false
+## Flips only the vertical drag direction (player setting).
+@export var invert_vertical := false
+## No breathing sway or shake (player setting "reduced motion").
+@export var reduced_motion := false
 @export var smoothing := 9.0
 @export var double_tap_ms := 300
 ## A press that moves less than this (pixels) and is released is a tap.
@@ -59,6 +63,8 @@ var _shake_decay := 1.0
 
 
 func _ready() -> void:
+	_apply_settings()
+	Settings.changed.connect(func(_k: String) -> void: _apply_settings())
 	_home_pos = position
 	_home_fov = fov
 	_target = Vector2(0.0, default_pitch_deg)
@@ -75,9 +81,20 @@ func _process(delta: float) -> void:
 	_apply()
 
 
+func _apply_settings() -> void:
+	drag_degrees_per_screen = 100.0 * Settings.sensitivity
+	invert_vertical = Settings.invert_vertical
+	reduced_motion = Settings.reduced_motion
+	if reduced_motion:
+		_shake_amp = 0.0
+
+
 ## Room vibration: `amplitude` degrees, fading out over `duration` seconds.
-## A stronger shake replaces a weaker one; it never moves the seat.
+## A stronger shake replaces a weaker one; it never moves the seat and
+## never blocks input. Skipped entirely with reduced motion.
 func shake(amplitude: float, duration: float) -> void:
+	if reduced_motion:
+		return
 	if amplitude >= _shake_amp:
 		_shake_amp = amplitude
 		_shake_decay = amplitude / maxf(duration, 0.01)
@@ -85,7 +102,7 @@ func shake(amplitude: float, duration: float) -> void:
 
 func _apply() -> void:
 	# Barely perceptible breathing sway keeps the seated view alive.
-	var sway := Vector2(sin(_t * 0.37) * 0.12, sin(_t * 0.61) * 0.09)
+	var sway := Vector2.ZERO if reduced_motion else Vector2(sin(_t * 0.37) * 0.12, sin(_t * 0.61) * 0.09)
 	if _shake_amp > 0.0:
 		sway += Vector2(sin(_t * 61.0) * cos(_t * 23.0), sin(_t * 53.0 + 1.3)) * _shake_amp
 	var euler := Vector3(_current.y + sway.y, _current.x + sway.x, 0.0) * (PI / 180.0)
@@ -164,7 +181,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if invert_drag:
 			deg_per_px = -deg_per_px
 		_target.x = clampf(_target.x - event.relative.x * deg_per_px, -yaw_limit_deg, yaw_limit_deg)
-		_target.y = clampf(_target.y - event.relative.y * deg_per_px, pitch_min_deg, pitch_max_deg)
+		var dy: float = -event.relative.y * deg_per_px * (-1.0 if invert_vertical else 1.0)
+		_target.y = clampf(_target.y + dy, pitch_min_deg, pitch_max_deg)
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if _focus_on:
 			if event.keycode in [KEY_R, KEY_SPACE, KEY_HOME]:

@@ -23,6 +23,7 @@ signal action_pressed(action_name: String)
 @onready var _banner: Button = %OrderBanner
 @onready var _gfx: Button = %GfxButton
 
+var _menu: Button
 var _toast_tween: Tween
 var _banner_tween: Tween
 var _orders: Node
@@ -36,6 +37,16 @@ func _ready() -> void:
 	_back.pressed.connect(back_pressed.emit)
 	_banner.pressed.connect(func() -> void:
 		get_tree().call_group("message_reader", "open_current"))
+	# MENU (pause) sits top-left; the quick GFX toggle moves right of it.
+	_menu = _gfx.duplicate(0) as Button
+	_menu.name = "MenuButton"
+	_menu.unique_name_in_owner = false
+	_menu.text = "MENU"
+	_menu.offset_right = _menu.offset_left + 110
+	add_child(_menu)
+	_menu.pressed.connect(func() -> void: get_tree().call_group("pause_menu", "open"))
+	_gfx.offset_left += 120
+	_gfx.offset_right += 120
 	var gfx := get_tree().get_first_node_in_group("graphics")
 	if gfx:
 		_gfx.text = gfx.label()
@@ -59,7 +70,7 @@ func _process(_delta: float) -> void:
 
 
 func show_focus(title: String, actions: PackedStringArray) -> void:
-	for b in [_left, _forward, _right, _gfx]:
+	for b in [_left, _forward, _right, _gfx, _menu]:
 		b.visible = false
 	_hint.visible = false
 	_back.visible = true
@@ -78,7 +89,7 @@ func show_focus(title: String, actions: PackedStringArray) -> void:
 
 
 func hide_focus() -> void:
-	for b in [_left, _forward, _right]:
+	for b in [_left, _forward, _right, _menu]:
 		b.visible = true
 	_gfx.visible = get_tree().get_first_node_in_group("graphics") != null
 	_back.visible = false

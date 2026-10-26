@@ -14,7 +14,8 @@
 [ext_resource type="Script" path="res://scripts/map_control_unit.gd" id="12_mapunit"]
 [ext_resource type="Script" path="res://scripts/missile_launch.gd" id="13_missile"]
 [ext_resource type="Script" path="res://scripts/launch_controller.gd" id="14_launch"]
-[ext_resource type="Script" path="res://scripts/graphics_settings.gd" id="15_graphics"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="15_pause"]
+[ext_resource type="Script" path="res://scripts/game/director.gd" id="16_director"]
 
 [node name="Main" type="Node3D"]
 
@@ -95,5 +96,8 @@ camera = NodePath("../OperatorCamera")
 room = NodePath("../CommandRoom")
 missile = NodePath("../MissileLaunch")
 
-[node name="GraphicsSettings" type="Node" parent="."]
-script = ExtResource("15_graphics")
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("15_pause")
+
+[node name="Director" type="Node" parent="."]
+script = ExtResource("16_director")

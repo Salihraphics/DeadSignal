@@ -40,6 +40,8 @@ func _ready() -> void:
 	_build_wall_details()
 	_build_lights()
 	_build_environment()
+	# Every station has built its lights by the end of this frame.
+	get_tree().call_group_flags(SceneTree.GROUP_CALL_DEFERRED, "graphics", "reapply")
 
 
 func _process(delta: float) -> void:
@@ -65,6 +67,8 @@ func set_quality(shadows: bool, glow: bool) -> void:
 
 ## Brief unsteady lighting (launch vibration through the fittings).
 func flicker(duration: float) -> void:
+	if Settings.reduced_motion:
+		return
 	_flicker_until = _t + duration
 
 

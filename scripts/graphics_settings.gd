@@ -9,7 +9,12 @@ extends Node
 ## a phone and upscales it, while UI and CRT text stay at native resolution.
 ##
 ## AUTO starts from MEDIUM on mobile (HIGH on desktop), then measures this
-## device's own frame rate once and steps down if it stays below 40 FPS.
+## device's own frame rate once in the command room and steps down if it
+## stays below 40 FPS.
+##
+## Autoload "Graphics" (group "graphics"): the menu's settings screen and the
+## in-game GFX button both use this one node. The command room calls
+## reapply() when it is built so the preset reaches its lights.
 
 signal preset_changed(mode: String, active: String)
 
@@ -45,6 +50,13 @@ func _ready() -> void:
 			mode = saved
 	get_viewport().size_changed.connect(func() -> void: _apply(active))
 	_apply(_initial_preset())
+
+
+## A new scene with lights was built: apply the preset to it and, in AUTO,
+## measure again (the menu is far cheaper than the room).
+func reapply() -> void:
+	_auto_steps = 0
+	_apply(_initial_preset() if mode != "AUTO" or active == "" else active)
 	_restart_auto()
 
 
@@ -61,9 +73,7 @@ func cycle() -> void:
 
 func set_mode(m: String) -> void:
 	mode = m
-	var cfg := ConfigFile.new()
-	cfg.set_value("graphics", "mode", mode)
-	cfg.save(SETTINGS_PATH)
+	Settings.store("graphics", "mode", mode)
 	_auto_steps = 0
 	_apply(_initial_preset())
 	_restart_auto()
@@ -77,6 +87,8 @@ func _restart_auto() -> void:
 func _process(delta: float) -> void:
 	if mode != "AUTO" or _sample_t < -1.0e8:
 		return
+	if get_tree().get_first_node_in_group("command_room") == null:
+		return                          # only the room is worth measuring
 	_sample_t += delta
 	if _sample_t < 0.0:
 		return

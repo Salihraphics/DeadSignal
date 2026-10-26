@@ -171,12 +171,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _notification(what: int) -> void:
 	# Android back gesture / button: close the message reader, then leave
-	# focus, otherwise quit.
+	# focus, otherwise open the pause menu (which handles back itself).
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		var pause := get_tree().get_first_node_in_group("pause_menu")
+		if pause and pause.is_open():
+			return
 		var reader := get_tree().get_first_node_in_group("message_reader")
 		if reader and reader.is_open():
 			reader.close()
 		elif _zone:
 			exit_focus()
+		elif pause:
+			pause.open()
 		else:
 			get_tree().quit()
