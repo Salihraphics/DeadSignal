@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="15_pause"]
 [ext_resource type="Script" path="res://scripts/game/director.gd" id="16_director"]
 [ext_resource type="Script" path="res://scripts/game/endings.gd" id="17_endings"]
+[ext_resource type="Script" path="res://scripts/vices.gd" id="18_vices"]
 
 [node name="Main" type="Node3D"]
 
@@ -59,6 +60,10 @@ script = ExtResource("3_crt")
 screen_size = Vector2(0.3, 0.225)
 resolution = Vector2i(256, 192)
 content = 2
+
+[node name="Vices" type="Node3D" parent="MainConsole"]
+transform = Transform3D(0.94, 0, 0.342, 0, 1, 0, -0.342, 0, 0.94, 1.02, 0.76, -0.55)
+script = ExtResource("18_vices")
 
 [node name="CommsStation" type="Node3D" parent="."]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -1.625, 0, -0.45)
