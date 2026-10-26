@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://scripts/game/director.gd" id="16_director"]
 [ext_resource type="Script" path="res://scripts/game/endings.gd" id="17_endings"]
 [ext_resource type="Script" path="res://scripts/vices.gd" id="18_vices"]
+[ext_resource type="Script" path="res://scripts/game/intoxication.gd" id="19_intox"]
 
 [node name="Main" type="Node3D"]
 
@@ -110,3 +111,6 @@ script = ExtResource("16_director")
 
 [node name="Endings" type="CanvasLayer" parent="."]
 script = ExtResource("17_endings")
+
+[node name="Intoxication" type="Node" parent="."]
+script = ExtResource("19_intox")

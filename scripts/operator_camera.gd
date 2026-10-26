@@ -60,6 +60,15 @@ var _focus_fov := 50.0
 var _focus_w := 0.0                 # 0 = seated view, 1 = fully focused
 var _shake_amp := 0.0               # degrees, decays over time
 var _shake_decay := 1.0
+## Additive head turns in degrees (pitch, yaw, roll): `action_tilt` for the
+## operator's own movements (drinking), `react_tilt` for bodily reactions.
+## They never touch the look target, so input is never taken away.
+var action_tilt := Vector3.ZERO
+var react_tilt := Vector3.ZERO
+## Intoxication sway, 0..1 (set by Intoxication). Scaled down with reduced motion.
+var drunk := 0.0
+## Mouth position in camera space (for drinking / smoking animations).
+const MOUTH := Vector3(0.0, -0.085, -0.05)
 
 
 func _ready() -> void:
@@ -105,15 +114,29 @@ func _apply() -> void:
 	var sway := Vector2.ZERO if reduced_motion else Vector2(sin(_t * 0.37) * 0.12, sin(_t * 0.61) * 0.09)
 	if _shake_amp > 0.0:
 		sway += Vector2(sin(_t * 61.0) * cos(_t * 23.0), sin(_t * 53.0 + 1.3)) * _shake_amp
-	var euler := Vector3(_current.y + sway.y, _current.x + sway.x, 0.0) * (PI / 180.0)
+	var roll := 0.0
+	var fov_off := 0.0
+	if drunk > 0.001:
+		# Slow, low-frequency drift; never fast enough to read as shaking.
+		var d := drunk * (0.25 if reduced_motion else 1.0)
+		sway += Vector2(sin(_t * 0.53) * 1.9 + sin(_t * 1.27) * 0.5, sin(_t * 0.41 + 1.1) * 1.2) * d
+		roll = (0.0 if reduced_motion else sin(_t * 0.33) * 2.2 * d)
+		fov_off = sin(_t * 0.29) * 1.6 * d
+	var tilt := action_tilt + react_tilt
+	var euler := Vector3(_current.y + sway.y + tilt.x, _current.x + sway.x + tilt.y, roll + tilt.z) * (PI / 180.0)
 	var seated := Transform3D(Basis.from_euler(euler), _home_pos)
 	if _focus_w < 0.001:
 		transform = seated
-		fov = _home_fov
+		fov = _home_fov + fov_off
 		return
 	var w := smoothstep(0.0, 1.0, _focus_w)
 	transform = seated.interpolate_with(_focus_pose, w)
-	fov = lerpf(_home_fov, _focus_fov, w)
+	fov = lerpf(_home_fov, _focus_fov, w) + fov_off * (1.0 - w)
+
+
+## The operator's mouth in world space (follows head turns and sway).
+func mouth_point() -> Vector3:
+	return global_transform * MOUTH
 
 
 ## Leans in toward `pose` (a camera transform) until unfocus() is called.

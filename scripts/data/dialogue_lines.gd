@@ -25,6 +25,7 @@ const VOICE_DIR := "res://assets/audio/voice/ru/"
 const LINES := [
 	# Beer and cigarettes.
 	{"id": "op_beer_first", "event": "beer", "text": "Here's to another quiet shift.", "cond": {"first": true}},
+	{"id": "op_beer_third", "event": "beer", "text": "Third one. Purely for morale.", "cond": {"third": true}},
 	{"id": "op_beer_second", "event": "beer", "text": "Excellent. The war is still here.", "cond": {"consecutive": true}},
 	{"id": "op_beer_second_b", "event": "beer", "text": "That one didn't help either.", "cond": {"consecutive": true}, "min_t": 900},
 	{"id": "op_beer_warm", "event": "beer", "text": "Warm. Of course it's warm."},
@@ -32,17 +33,31 @@ const LINES := [
 	{"id": "op_cig_first", "event": "cigarette", "text": "One thing they haven't rationed.", "cond": {"first": true}},
 	{"id": "op_cig_father", "event": "cigarette", "text": "Father smoked these. Said they tasted of tar. They still do.", "min_t": 400},
 	{"id": "op_cig_ashtray", "event": "cigarette", "text": "The ashtray fills faster than the log.", "min_t": 900},
+	{"id": "op_cig_minutes", "event": "cigarette", "text": "Two minutes with nothing to decide.", "min_t": 300},
+	{"id": "op_cig_updown", "event": "cigarette", "text": "Smoke goes up. Orders come down.", "min_t": 700},
+
+	# Too much beer. Never graphic, never a joke at length.
+	{"id": "op_drunk", "event": "drunk", "text": "The room is moving. The room should not move."},
+	{"id": "op_drunk_b", "event": "drunk", "text": "Steady. The missile isn't going anywhere. Hopefully.", "min_t": 600},
+	{"id": "op_vomit", "event": "vomit", "text": "...Nobody saw that."},
+	{"id": "op_vomit_b", "event": "vomit", "text": "Right. That is enough of that."},
 
 	# Isolation and silence.
 	{"id": "op_company", "event": "isolation", "text": "Could use some company."},
 	{"id": "op_generator", "event": "isolation", "text": "Even the generator says more than they do.", "min_t": 700},
 	{"id": "op_stairs", "event": "isolation", "text": "Nobody has come down those stairs since the handover.", "min_t": 1300},
 	{"id": "op_quiet", "event": "isolation", "text": "Quiet. Not the good kind.", "min_t": 1800},
+	{"id": "op_hello", "event": "isolation", "text": "Hello? ...Just checking the line still works.", "min_t": 900},
 
 	# Communications that go unanswered.
 	{"id": "op_nothing", "event": "unanswered", "text": "Of course. Nothing."},
 	{"id": "op_still_waiting", "event": "unanswered", "text": "Still waiting. Like everyone else."},
 	{"id": "op_keeping", "event": "unanswered", "text": "If they read these, they keep it to themselves."},
+	{"id": "op_forwarded", "event": "unanswered", "text": "Forwarded to Central. Where questions go to rest."},
+	{"id": "op_rejected", "event": "rejected", "text": "Forty-one seconds. Someone at K-2 counted them too."},
+	{"id": "op_one_at_a_time", "event": "pressure", "text": "One at a time. They never send them one at a time."},
+	{"id": "op_read_sign", "event": "pressure", "text": "Read, decide, sign. Read, decide, sign."},
+	{"id": "op_behind", "event": "pressure", "text": "Every post is behind. Every post is told so.", "min_t": 900},
 
 	# Reports and orders.
 	{"id": "op_shift_start", "event": "shift_start", "text": "Another shift. Same chair."},
@@ -70,6 +85,7 @@ const LINES := [
 	{"id": "op_mother_karsen", "event": "ambient", "text": "Her street is two kilometres from the junction. I measured it once. On this map.", "min_t": 1300},
 	{"id": "op_letter", "event": "ambient", "text": "I should have answered her last letter.", "min_t": 1600},
 	{"id": "op_clock_hand", "event": "ambient", "text": "The second hand sticks at the forty. Every time.", "min_t": 1900},
+	{"id": "op_third_night", "event": "ambient", "text": "The clock says morning. Feels like the third night.", "min_t": 1150},
 ]
 
 

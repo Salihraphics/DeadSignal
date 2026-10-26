@@ -238,6 +238,32 @@ def inhale():
     return x
 
 
+def exhale():
+    """A slow breath out through the teeth."""
+    x = bandpass(noise(1.5), 300.0, 2200.0) * env(int(1.5 * RATE), 0.15, 0.9) * 0.6
+    return x
+
+
+def bottle_lift():
+    s = t(0.25)
+    return (np.sin(2 * np.pi * 2300 * s) * np.exp(-s * 30.0) * 0.25) + lowpass(noise(0.25), 400.0) * np.exp(-s * 40.0)
+
+
+def retch():
+    """Non-graphic: two dry heaves (low throat noise) and a cough."""
+    x = np.zeros(1)
+    for k, d in ((0.0, 0.55), (0.75, 0.7)):
+        n = int(d * RATE)
+        s = np.arange(n) / RATE
+        heave = lowpass(noise(d), 260.0) * np.sin(np.pi * s / d) ** 2 * 2.2
+        heave += 0.25 * np.sin(2 * np.pi * (110 - 30 * s / d) * s) * np.sin(np.pi * s / d)
+        x = at(x, heave, k)
+    cough = bandpass(noise(0.18), 250.0, 1800.0) * np.exp(-t(0.18) * 18.0) * 1.4
+    x = at(x, cough, 1.75)
+    x = at(x, 0.7 * cough, 2.05)
+    return pad(x, 0.2)
+
+
 # --- Facility / events ------------------------------------------------------------------------
 
 def door_heavy():
@@ -346,3 +372,7 @@ if __name__ == "__main__":
     save("park", park(), 0.5)
     save("drone", drone(), 0.5)
     save("typewriter", typewriter(), 0.5)
+    # Added later: keep at the end so earlier sounds stay byte-identical.
+    save("exhale", exhale(), 0.35)
+    save("bottle_lift", bottle_lift(), 0.35)
+    save("retch", retch(), 0.6)
