@@ -1,8 +1,9 @@
 extends Node3D
 ## Left-side communications station: telephone, radio transceiver with
 ## microphone, message printer, printed reports, line-status panel and a
-## wall clock. The telephone, radio, teleprinter and line switches give
-## placeholder feedback when tapped; no messages or calls exist yet.
+## wall clock. The telephone, radio and line switches give placeholder
+## feedback when tapped. The teleprinter prints incoming orders (from the
+## order manager) and opens the message reader when tapped.
 ##
 ## Built in local space: the operator is toward +Z, the wall toward -Z,
 ## and the desk top is at y = 0.76. main.tscn rotates the node into place.
@@ -18,6 +19,10 @@ var _second_hand: Node3D
 var _rx_lamp: MeshInstance3D
 var _rx_until := 0.0
 var _t := 0.0
+var _orders: Node
+var _printer_lamp: MeshInstance3D
+var _sheet: Node3D
+var _sheet_text: Label3D
 
 const CHANNELS := ["07.450", "11.200", "04.875", "09.330"]
 
@@ -32,10 +37,16 @@ func _ready() -> void:
 	_build_reports(K.pivot(self, Vector3(0.82, TOP, -0.25)))
 	_build_desk_lamp(K.pivot(self, Vector3(-0.32, TOP, -0.36)))
 	_build_wall()
+	_orders = get_tree().get_first_node_in_group("orders")
+	if _orders:
+		_orders.state_changed.connect(_on_order_state)
 
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _orders and _orders.is_pending():
+		# Teleprinter lamp blinks while a reply is outstanding.
+		_printer_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, fmod(_t, 0.8) < 0.4, 2.2)
 	var now := Time.get_time_dict_from_system()
 	var sec: float = now.second
 	var minute: float = now.minute + sec / 60.0
@@ -67,17 +78,39 @@ func _build_printer(p: Node3D) -> void:
 	# Printed sheet emerging from the slot.
 	var sheet := K.pivot(p, Vector3(0, 0.2, 0.06), Vector3(-18, 0, 0))
 	K.box(sheet, Vector3(0.3, 0.26, 0.003), Vector3(0, 0.13, 0), K.mat("paper"), Vector3.ZERO, false)
-	K.label(sheet, "MSG 0001  ROUTINE\nLINE CHECK ..... OK\nNO TRAFFIC\n-- END --", Vector3(0, 0.16, 0.003), 0.017, INK)
+	_sheet = sheet
+	_sheet_text = K.label(sheet, "MSG 0001  ROUTINE\nLINE CHECK ..... OK\nNO TRAFFIC\n-- END --", Vector3(0, 0.16, 0.003), 0.017, INK)
 	# Front controls.
 	K.box(p, Vector3(0.12, 0.03, 0.01), Vector3(0.13, 0.08, 0.19), K.mat("bakelite"))
-	K.cyl(p, 0.008, 0.01, Vector3(-0.15, 0.08, 0.195), K.lamp(BuildKit.AMBER, true, 1.4), Vector3(90, 0, 0), 6, -1.0, false)
+	_printer_lamp = K.cyl(p, 0.008, 0.01, Vector3(-0.15, 0.08, 0.195), K.lamp(BuildKit.AMBER, true, 1.4), Vector3(90, 0, 0), 6, -1.0, false)
 	K.label(p, "TELEPRINTER", Vector3(-0.05, 0.13, 0.192), 0.016, TEXT_DARK)
 	var area := Interactable.make(p, Vector3(0.48, 0.48, 0.46), Vector3(0, 0.22, 0.02), "Teleprinter")
 	area.activated.connect(func(_hit: Vector3) -> void:
+		if _orders and _orders.has_order():
+			get_tree().call_group("message_reader", "open_current")
+			return
 		var tw := create_tween()
 		tw.tween_property(sheet, "position:y", 0.225, 0.12)
 		tw.tween_property(sheet, "position:y", 0.2, 0.25)
 		_toast("TELEPRINTER: NO NEW MESSAGES"))
+
+
+## Prints the order on the 3D sheet; the reader shows the full text.
+func _on_order_state(state: int) -> void:
+	var o: Dictionary = _orders.order
+	var lines := "%s  %s\n%s\n%s" % [o.id, o.fields[0][1], o.fields[3][1], o.fields[1][1]]
+	if state == _orders.State.PENDING:
+		# Paper feeds out in short jerks as the message prints.
+		var tw := create_tween()
+		for i in range(4):
+			tw.tween_property(_sheet, "position:y", 0.2 + (i + 1) * 0.008, 0.08)
+			tw.tween_interval(0.12)
+		tw.tween_property(_sheet, "position:y", 0.2, 0.3)
+		_sheet_text.text = lines + "\n-- REPLY REQUIRED --"
+	elif _orders.has_order():
+		var word := "ACCEPTED" if state == _orders.State.ACCEPTED else "REFUSED"
+		_sheet_text.text = lines + "\n-- %s %s --" % [word, _orders.decided_at]
+		_printer_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, true, 1.4)
 
 
 func _build_radio(p: Node3D) -> void:

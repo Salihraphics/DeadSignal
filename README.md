@@ -75,7 +75,7 @@ Roadmap
 - [ ] Create CRT displays and analogue control panels. *(placeholders in place)*
 - [x] Basic placeholder interactions and focus mode.
 - [ ] Add lighting, materials, and environmental details.
-- [ ] Implement communications and incoming orders.
+- [ ] Implement communications and incoming orders. *(first order playable)*
 - [ ] Add fictional map and radar interfaces.
 - [ ] Develop the missile launch sequence.
 - [ ] Implement battlefield simulation and decision consequences.
@@ -84,7 +84,19 @@ Roadmap
 
 Running the Prototype
 
-The current build is the command room, the seated camera and basic placeholder interactions. No gameplay systems exist yet: no orders, calls, targets or launches.
+The current build is the command room, the seated camera, basic placeholder interactions and the first playable order. There is no campaign, battlefield simulation, targeting or launch yet.
+
+First order (Stage 3)
+
+About ten seconds after the room loads, order **SC-001** arrives on the teleprinter:
+
+1. The teleprinter prints and its lamp blinks, a pulsing `! ORDER SC-001 - READ` notice appears top right, and the strategic-control CRT shows `SC-001 PENDING`.
+2. Tap the notice or the teleprinter to read the order on a paper sheet. `CLOSE`, `Esc` or Android back returns to the room; the order stays pending.
+3. Reply with `ACCEPT` or `REFUSE`. Each needs a second tap (`CONFIRM ...`) so a stray touch cannot decide; tapping the other button or closing the sheet disarms it.
+4. The decision is stamped on the sheet with its time, confirmed on screen, recorded by the order manager and shown on the CRT (`SC-001 ACCEPTED` with readiness `LEVEL 2`, or `SC-001 REFUSED`). It cannot be changed.
+5. Tap the teleprinter at any time afterwards to reread the order with its stamp.
+
+Decisions are kept for the current session only. The unit, place and officer names in the order are fictional and provisional.
 
 Controls
 
@@ -109,7 +121,7 @@ Interactive objects (placeholder feedback only)
 | Main desk | MASTER cover and key | "MASTER CONTROLS LOCKED" (not part of this stage) |
 | Comms | Telephone | Handset lifts / hangs up, off-hook lamp |
 | Comms | Radio transceiver | Cycles placeholder channels |
-| Comms | Teleprinter | Paper feeds, "no new messages" |
+| Comms | Teleprinter | Opens the current order (before one arrives: paper feeds, "no new messages") |
 | Comms | Communication lines panel | Lean in; six line switches toggle their lamps |
 | Status | Facility status panel | Lean in; breakers CB-1..4 open/close and move their power meters |
 
@@ -146,6 +158,10 @@ scripts/status_station.gd Right: gauges, power meters, readiness, warnings
 scripts/operator_camera.gd Seated camera limits, views, focus lean, touch/mouse/keys
 scripts/interactable.gd  Invisible tap target / focus zone used by props
 scripts/interaction.gd   Turns taps into hits, manages focus mode and back
+scripts/order_catalog.gd Order texts as data (add future orders here)
+scripts/order_manager.gd Current order state, arrival, recorded decisions
+scripts/message_reader.gd Paper view of an order with ACCEPT / REFUSE
+scenes/message_reader.tscn Layout of the paper order sheet
 shaders/crt.gdshader     Scanlines, curvature and vignette for CRTs
 assets/flags/            Approved country flags (unchanged originals)
 assets/textures/         Low-res worn textures (tools/gen_textures.py)

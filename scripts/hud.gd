@@ -3,6 +3,8 @@ extends CanvasLayer
 ## short control hint that fades out, and a small FPS readout for
 ## on-device performance testing. In focus mode the view buttons are
 ## replaced by a BACK button, a title and optional placeholder actions.
+## While an order awaits a reply, a pulsing ORDER notice (top right) opens
+## the message reader.
 
 signal back_pressed
 signal action_pressed(action_name: String)
@@ -18,8 +20,11 @@ signal action_pressed(action_name: String)
 @onready var _title: Label = %FocusTitle
 @onready var _actions: HBoxContainer = %Actions
 @onready var _toast: Label = %Toast
+@onready var _banner: Button = %OrderBanner
 
 var _toast_tween: Tween
+var _banner_tween: Tween
+var _orders: Node
 
 
 func _ready() -> void:
@@ -28,6 +33,11 @@ func _ready() -> void:
 	_forward.pressed.connect(camera.reset_view)
 	_right.pressed.connect(camera.snap_to.bind("right"))
 	_back.pressed.connect(back_pressed.emit)
+	_banner.pressed.connect(func() -> void:
+		get_tree().call_group("message_reader", "open_current"))
+	_orders = get_tree().get_first_node_in_group("orders")
+	if _orders:
+		_orders.state_changed.connect(_on_order_state)
 	var tw := create_tween()
 	tw.tween_interval(6.0)
 	tw.tween_property(_hint, "modulate:a", 0.0, 1.5)
@@ -73,3 +83,23 @@ func toast(text: String) -> void:
 	_toast_tween = create_tween()
 	_toast_tween.tween_interval(2.2)
 	_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.6)
+
+
+func _on_order_state(state: int) -> void:
+	var id: String = _orders.order.id
+	if state == _orders.State.PENDING:
+		_banner.text = "! ORDER %s  -  READ" % id
+		_banner.visible = true
+		_banner_tween = create_tween().set_loops()
+		_banner_tween.tween_property(_banner, "modulate:a", 0.55, 0.6)
+		_banner_tween.tween_property(_banner, "modulate:a", 1.0, 0.6)
+		toast("INCOMING ORDER ON TELEPRINTER")
+		return
+	if _banner_tween:
+		_banner_tween.kill()
+	_banner.visible = false
+	_banner.modulate.a = 1.0
+	if state == _orders.State.ACCEPTED:
+		toast("ORDER %s ACCEPTED  -  ACKNOWLEDGEMENT SENT" % id)
+	elif state == _orders.State.REFUSED:
+		toast("ORDER %s REFUSED  -  REFUSAL REPORTED" % id)

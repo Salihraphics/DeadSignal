@@ -18,6 +18,7 @@ const GREEN := Color(0.35, 1.0, 0.45)
 const DIM := Color(0.35, 1.0, 0.45, 0.22)
 const MID := Color(0.3, 0.85, 0.38, 0.65)
 const AMBER := Color(1.0, 0.65, 0.15)
+const RED := Color(1.0, 0.25, 0.18)
 
 var mode: Mode = Mode.CONTROL
 var size := Vector2(256, 192)
@@ -31,10 +32,14 @@ var _range := 3                     # RADAR range setting 1..3
 var _test_t := -100.0               # CONTROL self-test start time
 var _poke_uv := Vector2.ZERO
 var _poke_t := -100.0
+var _orders: Node                   # order manager (CONTROL screen only)
 
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	_orders = get_tree().get_first_node_in_group("orders")
+	if _orders:
+		_orders.state_changed.connect(func(_s: int) -> void: queue_redraw())
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1985
 	for i in range(5):
@@ -166,22 +171,9 @@ func _mz(p: Vector2) -> Vector2:
 func _draw_control() -> void:
 	_text(Vector2(8, 16), "STRATEGIC CONTROL", GREEN, 14)
 	draw_line(Vector2(8, 22), Vector2(size.x - 8, 22), GREEN, 1.0)
-	var test_age := _t - _test_t
-	var status := ["STATUS", "STANDBY", AMBER]
-	if test_age < 2.5:
-		status = ["STATUS", "SELF TEST" + ".".repeat(int(test_age * 3.0) % 4), AMBER]
-	elif test_age < 7.0:
-		status = ["STATUS", "SELF TEST: PASS", GREEN]
-	var rows := [
-		["SYSTEM", "ONLINE", GREEN],
-		status,
-		["SHAFT", "SEALED", GREEN],
-		["READINESS", "NOMINAL", GREEN],
-		["ORDERS", "NONE RECEIVED", GREEN],
-		["TARGET", "--", MID],
-	]
+	var c := control_rows()
 	var y := 44.0
-	for r in rows:
+	for r in c.rows:
 		_text(Vector2(10, y), r[0], GREEN, 12)
 		_text(Vector2(10 + 92, y), ". . .", MID, 12)
 		_text(Vector2(150, y), r[1], r[2], 12)
@@ -191,7 +183,43 @@ func _draw_control() -> void:
 	var up := "UPTIME %02d:%02d:%02d" % [secs / 3600, (secs / 60) % 60, secs % 60]
 	_text(Vector2(10, y + 10), up, MID, 11)
 	var cursor := "_" if int(_t * 2.0) % 2 == 0 else " "
-	_text(Vector2(10, size.y - 12), "> AWAITING INPUT " + cursor, GREEN, 12)
+	_text(Vector2(10, size.y - 12), c.prompt + cursor, GREEN, 12)
+
+
+## Rows of the strategic-control readout ([label, value, colour]) and the
+## prompt line, reflecting self-test and the current order state.
+func control_rows() -> Dictionary:
+	var test_age := _t - _test_t
+	var status := ["STATUS", "STANDBY", AMBER]
+	var readiness := ["READINESS", "NOMINAL", GREEN]
+	var orders_row := ["ORDERS", "NONE RECEIVED", GREEN]
+	var prompt := "> AWAITING INPUT "
+	if _orders and _orders.has_order():
+		var id: String = _orders.order.id
+		if _orders.is_pending():
+			var blink_on := int(_t * 2.0) % 2 == 0
+			orders_row = ["ORDERS", "%s PENDING" % id, AMBER if blink_on else MID]
+			prompt = "> ORDER %s - REPLY REQUIRED " % id
+		elif _orders.state == _orders.State.ACCEPTED:
+			orders_row = ["ORDERS", "%s ACCEPTED" % id, GREEN]
+			readiness = ["READINESS", _orders.order.accept_readiness, AMBER]
+		else:
+			orders_row = ["ORDERS", "%s REFUSED" % id, RED]
+	if test_age < 2.5:
+		status = ["STATUS", "SELF TEST" + ".".repeat(int(test_age * 3.0) % 4), AMBER]
+	elif test_age < 7.0:
+		status = ["STATUS", "SELF TEST: PASS", GREEN]
+	return {
+		"rows": [
+			["SYSTEM", "ONLINE", GREEN],
+			status,
+			["SHAFT", "SEALED", GREEN],
+			readiness,
+			orders_row,
+			["TARGET", "--", MID],
+		],
+		"prompt": prompt,
+	}
 
 
 func _draw_radar() -> void:

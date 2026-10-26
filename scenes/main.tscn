@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/command_room.gd" id="1_room"]
 [ext_resource type="Script" path="res://scripts/main_console.gd" id="2_console"]
@@ -8,8 +8,13 @@
 [ext_resource type="Script" path="res://scripts/operator_camera.gd" id="6_camera"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="7_hud"]
 [ext_resource type="Script" path="res://scripts/interaction.gd" id="8_interaction"]
+[ext_resource type="Script" path="res://scripts/order_manager.gd" id="9_orders"]
+[ext_resource type="PackedScene" path="res://scenes/message_reader.tscn" id="10_reader"]
 
 [node name="Main" type="Node3D"]
+
+[node name="Orders" type="Node" parent="."]
+script = ExtResource("9_orders")
 
 [node name="CommandRoom" type="Node3D" parent="."]
 script = ExtResource("1_room")
@@ -61,3 +66,6 @@ camera = NodePath("../OperatorCamera")
 script = ExtResource("8_interaction")
 camera = NodePath("../OperatorCamera")
 hud = NodePath("../HUD")
+
+[node name="MessageReader" parent="." node_paths=PackedStringArray("orders") instance=ExtResource("10_reader")]
+orders = NodePath("../Orders")
