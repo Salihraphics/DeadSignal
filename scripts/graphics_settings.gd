@@ -114,6 +114,8 @@ func _process(delta: float) -> void:
 
 func _apply(preset: String) -> void:
 	active = preset
+	if not is_inside_tree():
+		return                          # applied in _ready
 	var p: Dictionary = PRESETS[preset]
 	var vp := get_viewport()
 	vp.msaa_3d = p.msaa
