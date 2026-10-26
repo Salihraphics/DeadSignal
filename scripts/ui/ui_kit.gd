@@ -99,7 +99,7 @@ static func label(text: String, size := 0, color := GREEN) -> Label:
 class Scanlines extends Control:
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		set_anchors_preset(Control.PRESET_FULL_RECT)
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		resized.connect(queue_redraw)
 
 	func _draw() -> void:

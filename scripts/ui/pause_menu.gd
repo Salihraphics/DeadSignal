@@ -18,15 +18,15 @@ func _ready() -> void:
 	add_to_group("pause_menu")
 	_root = Control.new()
 	_root.theme = UiKit.theme()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.78)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(dim)
 	var px := UiKit.text_px(get_viewport())
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(center)
 	var panel := PanelContainer.new()
 	center.add_child(panel)
@@ -45,8 +45,12 @@ func _ready() -> void:
 	_settings.closed.connect(func() -> void: panel.visible = true)
 	var m := minf(get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y) * 0.05
 	_root.add_child(_settings)
-	_settings.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_settings.set_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, int(m))
+	_settings.anchor_right = 1.0
+	_settings.anchor_bottom = 1.0
+	_settings.offset_left = m
+	_settings.offset_top = m
+	_settings.offset_right = -m
+	_settings.offset_bottom = -m
 	_root.visible = false
 
 

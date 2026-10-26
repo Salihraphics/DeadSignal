@@ -37,6 +37,8 @@ func _ready() -> void:
 		queue_redraw())
 	if orders:
 		orders.state_changed.connect(func(_s: int) -> void: queue_redraw())
+	Run.traffic_changed.connect(func(_i: Dictionary) -> void: queue_redraw())
+	Run.traffic_added.connect(func(_i: Dictionary) -> void: queue_redraw())
 
 
 func _process(delta: float) -> void:
@@ -85,8 +87,7 @@ func poke(uv: Vector2) -> void:
 func order_text() -> String:
 	if orders == null or not orders.has_order():
 		return "NONE"
-	var word: String = ["", "PENDING", "ACCEPTED", "REFUSED"][orders.state]
-	return "%s %s" % [orders.order.id, word]
+	return "%s %s" % [orders.order.id, orders.word()]
 
 
 func target_info() -> Dictionary:
@@ -101,8 +102,12 @@ func target_info() -> Dictionary:
 ## Readiness level set by an accepted order, then the shaft/key state.
 func readiness_text() -> String:
 	var level := "NOMINAL"
-	if orders and orders.has_order() and orders.state == orders.State.ACCEPTED:
-		level = orders.order.accept_readiness
+	if orders:
+		for h in orders.history:       # the latest accepted readiness order
+			if h.decision == "ACCEPTED":
+				var i := OrderCatalog.index_of(h.id)
+				if i >= 0 and OrderCatalog.get_order(i).has("accept_readiness"):
+					level = OrderCatalog.get_order(i).accept_readiness
 	if state.shaft != "LOADED":
 		return "%s  SHAFT %s" % [level, state.shaft]
 	if not state.key_armed:
@@ -278,6 +283,12 @@ func _draw_context() -> void:
 
 
 func _draw_log() -> void:
+	if Run.active:
+		# Sector picture: the official status, its basis and open queries.
+		var req := Run.open_requests().size()
+		var s := "KARSEN: %s  BASIS %s  QUERIES OPEN %d" % [Run.sector_status, Run.sector_basis, req]
+		_text(Vector2(0, inner.y - 4), s.substr(0, 66), AMBER, 11)
+		return
 	var e: Dictionary = state.last_event()
 	var s := "LOG: NO LAUNCHES" if e.is_empty() else "LOG: %s %s %s %s %s" % [e.launch_id, e.grid, e.ammo, e.time, e.result]
 	_text(Vector2(0, inner.y - 4), s.substr(0, 66), MID, 11)

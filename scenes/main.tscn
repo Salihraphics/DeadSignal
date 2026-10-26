@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://scripts/launch_controller.gd" id="14_launch"]
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="15_pause"]
 [ext_resource type="Script" path="res://scripts/game/director.gd" id="16_director"]
+[ext_resource type="Script" path="res://scripts/game/endings.gd" id="17_endings"]
 
 [node name="Main" type="Node3D"]
 
@@ -101,3 +102,6 @@ script = ExtResource("15_pause")
 
 [node name="Director" type="Node" parent="."]
 script = ExtResource("16_director")
+
+[node name="Endings" type="CanvasLayer" parent="."]
+script = ExtResource("17_endings")

@@ -24,6 +24,7 @@ signal action_pressed(action_name: String)
 @onready var _gfx: Button = %GfxButton
 
 var _menu: Button
+var _traffic: Button
 var _toast_tween: Tween
 var _banner_tween: Tween
 var _orders: Node
@@ -55,6 +56,17 @@ func _ready() -> void:
 			_gfx.text = gfx.label())
 	else:
 		_gfx.visible = false
+	# Teleprinter notice under the order banner (edge of screen, never central).
+	_traffic = _banner.duplicate(0) as Button
+	_traffic.name = "TrafficButton"
+	_traffic.unique_name_in_owner = false
+	_traffic.offset_top = _banner.offset_bottom + 8
+	_traffic.offset_bottom = _traffic.offset_top + 52
+	_traffic.visible = false
+	add_child(_traffic)
+	_traffic.pressed.connect(func() -> void: get_tree().call_group("message_reader", "open_current"))
+	Run.traffic_added.connect(func(_i: Dictionary) -> void: _update_traffic())
+	Run.traffic_changed.connect(func(_i: Dictionary) -> void: _update_traffic())
 	_orders = get_tree().get_first_node_in_group("orders")
 	if _orders:
 		_orders.state_changed.connect(_on_order_state)
@@ -70,7 +82,7 @@ func _process(_delta: float) -> void:
 
 
 func show_focus(title: String, actions: PackedStringArray) -> void:
-	for b in [_left, _forward, _right, _gfx, _menu]:
+	for b in [_left, _forward, _right, _gfx, _menu, _traffic]:
 		b.visible = false
 	_hint.visible = false
 	_back.visible = true
@@ -93,6 +105,7 @@ func hide_focus() -> void:
 		b.visible = true
 	_gfx.visible = get_tree().get_first_node_in_group("graphics") != null
 	_back.visible = false
+	_update_traffic()
 	_title.visible = false
 	_actions.visible = false
 
@@ -108,21 +121,33 @@ func toast(text: String) -> void:
 	_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.6)
 
 
+func _update_traffic() -> void:
+	var n := Run.unread_count()
+	_traffic.visible = n > 0 and not _back.visible
+	_traffic.text = "TELEPRINTER: %d UNREAD" % n
+
+
 func _on_order_state(state: int) -> void:
 	var id: String = _orders.order.id
+	var quiet: bool = _orders.restoring or Run.active   # in a run the cue is audio
 	if state == _orders.State.PENDING:
 		_banner.text = "! ORDER %s  -  READ" % id
 		_banner.visible = true
 		_banner_tween = create_tween().set_loops()
 		_banner_tween.tween_property(_banner, "modulate:a", 0.55, 0.6)
 		_banner_tween.tween_property(_banner, "modulate:a", 1.0, 0.6)
-		toast("INCOMING ORDER ON TELEPRINTER")
+		if not quiet:
+			toast("INCOMING ORDER ON TELEPRINTER")
 		return
 	if _banner_tween:
 		_banner_tween.kill()
 	_banner.visible = false
 	_banner.modulate.a = 1.0
+	if _orders.restoring:
+		return
 	if state == _orders.State.ACCEPTED:
 		toast("ORDER %s ACCEPTED  -  ACKNOWLEDGEMENT SENT" % id)
 	elif state == _orders.State.REFUSED:
 		toast("ORDER %s REFUSED  -  REFUSAL REPORTED" % id)
+	elif state == _orders.State.EXPIRED:
+		toast("ORDER %s  -  NO REPLY RECORDED" % id)

@@ -20,6 +20,8 @@ const WIN_TOP := 2.25
 const SHAFT_HALF_W := 1.8
 const SHAFT_BACK_Z := -5.4
 
+var door: Node3D
+var door_light: MeshInstance3D
 var _shaft_beacon: MeshInstance3D
 var _key_light: SpotLight3D
 var _key_energy := 0.0
@@ -110,8 +112,13 @@ func _build_shell() -> void:
 
 	# Heavy steel door on the back wall (out of the normal view range,
 	# reserved for later scenes).
-	K.box(self, Vector3(1.0, 2.05, 0.08), Vector3(1.3, 1.025, BACK_Z - 0.04), K.mat("paint_grey"))
-	K.box(self, Vector3(0.06, 0.3, 0.06), Vector3(0.9, 1.05, BACK_Z - 0.11), K.mat("steel"))
+	# Hinged on its right edge so an ending can swing it open; behind it a
+	# lit corridor panel, hidden by the closed door.
+	door = K.pivot(self, Vector3(1.8, 0, BACK_Z - 0.04))
+	K.box(door, Vector3(1.0, 2.05, 0.08), Vector3(-0.5, 1.025, 0), K.mat("paint_grey"))
+	K.box(door, Vector3(0.06, 0.3, 0.06), Vector3(-0.9, 1.05, -0.07), K.mat("steel"))
+	door_light = K.quad(self, Vector2(0.96, 2.0), Vector3(1.3, 1.0, BACK_Z - 0.005), K.lamp(Color(0.95, 0.9, 0.8), true, 2.5), Vector3(0, 180, 0))
+	door_light.visible = false
 
 
 func _build_window() -> void:

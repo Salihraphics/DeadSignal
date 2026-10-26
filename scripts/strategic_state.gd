@@ -41,6 +41,10 @@ var layer_index := 0
 var events: Array[Dictionary] = []
 var current: Dictionary = {}               # snapshot of the launch in progress
 var abort_reason := ""
+## In a run, launching needs authority from an accepted order:
+## {order, grid, max_ammo}; cleared after one launch or by the next order.
+var require_authority := false
+var authority: Dictionary = {}
 
 
 func _enter_tree() -> void:
@@ -205,6 +209,14 @@ func set_cover(open: bool) -> void:
 ## Reasons a launch cannot start, in the order the operator should act.
 func missing() -> Array[String]:
 	var m: Array[String] = []
+	if require_authority:
+		if authority.is_empty():
+			m.append("NO RELEASE AUTHORITY")
+			return m
+		if has_target() and target_ref() != authority.grid:
+			m.append("GRID NOT AUTHORISED (ORDER: %s)" % authority.grid)
+		if ammo != "" and Ammunition.ORDER.find(ammo) > Ammunition.ORDER.find(authority.max_ammo):
+			m.append("CATEGORY EXCEEDS ORDER (MAX %s)" % authority.max_ammo)
 	if ammo == "":
 		m.append("SELECT AMMUNITION")
 	if not has_target():
@@ -231,7 +243,7 @@ func request_launch() -> String:
 	var orders := get_tree().get_first_node_in_group("orders")
 	current = {
 		"launch_id": "L-%03d" % (events.size() + 1),
-		"order_id": orders.order.id if orders and orders.has_order() else "NONE",
+		"order_id": authority.order if not authority.is_empty() else (orders.order.id if orders and orders.has_order() else "NONE"),
 		"ammo": ammo,
 		"cell": target_cell,
 		"grid": target_ref(),
@@ -260,6 +272,7 @@ func missile_away() -> Dictionary:
 	if launch_state != Launch.SEQUENCE or current.get("recorded", true):
 		return {}
 	current.recorded = true
+	authority = {}                        # one launch per authorising order
 	resources -= current.cost
 	shaft = "EMPTY"
 	var event := {
@@ -326,6 +339,45 @@ func _set_launch(s: Launch) -> void:
 	selection_changed.emit()
 
 
-static func _clock() -> String:
-	var t := Time.get_time_dict_from_system()
-	return "%02d%02d" % [t.hour, t.minute]
+func _clock() -> String:
+	return Run.hhmm()
+
+
+## Saved with the run. Cells become arrays (JSON has no Vector2i). A launch
+## interrupted by the save is settled deterministically on restore.
+func snapshot() -> Dictionary:
+	var ev := []
+	for e in events:
+		var c := e.duplicate()
+		c.cell = [e.cell.x, e.cell.y]
+		ev.append(c)
+	return {
+		"resources": resources, "events": ev, "authority": authority,
+		"ammo": ammo, "target": [target_cell.x, target_cell.y], "cursor": [cursor.x, cursor.y],
+		"shaft": "LOADED" if shaft == "RELOADING" else shaft,
+	}
+
+
+func restore(d: Dictionary) -> void:
+	if d.is_empty():
+		return
+	resources = int(d.get("resources", resources))
+	events.clear()
+	for e in d.get("events", []):
+		var c: Dictionary = e.duplicate()
+		c.cell = Vector2i(int(e.cell[0]), int(e.cell[1]))
+		c.cost = int(c.cost)
+		if c.result == "PENDING":           # saved mid-flight: settle it now
+			var o := OutcomeModel.evaluate(c.cell, c.ammo)
+			c.result = o.category
+			c.report = o.lines
+		events.append(c)
+	authority = d.get("authority", {})
+	ammo = d.get("ammo", "")
+	var t: Array = d.get("target", [-1, -1])
+	target_cell = Vector2i(int(t[0]), int(t[1]))
+	var cu: Array = d.get("cursor", [cursor.x, cursor.y])
+	cursor = Vector2(float(cu[0]), float(cu[1]))
+	shaft = "LOADED" if d.get("shaft", "LOADED") in ["EMPTY", "OPEN"] else d.get("shaft", "LOADED")
+	selection_changed.emit()
+	map_changed.emit()

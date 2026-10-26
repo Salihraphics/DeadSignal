@@ -23,6 +23,20 @@ var _orders: Node
 var _printer_lamp: MeshInstance3D
 var _sheet: Node3D
 var _sheet_text: Label3D
+# Telephone: an incoming call rings until answered or it times out.
+var _call: Dictionary = {}
+var _ring_left := 0.0
+var _ring_next := 0.0
+var _hook_lamp: MeshInstance3D
+var _phone_state := {"lifted": false}
+var _lift_phone: Callable
+# Radio: a live transmission can be heard while the RX lamp is lit.
+var _live: Dictionary = {}
+var _live_until := 0.0
+var _freq: Label3D
+var _channel := 0
+
+const RING_TIMEOUT := 24.0
 
 const CHANNELS := ["07.450", "11.200", "04.875", "09.330"]
 
@@ -37,26 +51,32 @@ func _ready() -> void:
 	_build_reports(K.pivot(self, Vector3(0.82, TOP, -0.25)))
 	_build_desk_lamp(K.pivot(self, Vector3(-0.32, TOP, -0.36)))
 	_build_wall()
+	add_to_group("comms")
 	_orders = get_tree().get_first_node_in_group("orders")
 	if _orders:
 		_orders.state_changed.connect(_on_order_state)
+	Run.traffic_added.connect(func(_i: Dictionary) -> void: _feed_paper())
 
 
 func _process(delta: float) -> void:
 	_t += delta
-	if _orders and _orders.is_pending():
-		# Teleprinter lamp blinks while a reply is outstanding.
+	if (_orders and _orders.is_pending()) or Run.unread_count() > 0:
+		# Teleprinter lamp blinks while traffic is unread or a reply is due.
 		BuildKit.set_mat(_printer_lamp, BuildKit.lamp(BuildKit.AMBER, fmod(_t, 0.8) < 0.4, 2.2))
-	var now := Time.get_time_dict_from_system()
-	var sec: float = now.second
-	var minute: float = now.minute + sec / 60.0
-	var hour: float = fmod(now.hour, 12.0) + minute / 60.0
+	else:
+		BuildKit.set_mat(_printer_lamp, BuildKit.lamp(BuildKit.AMBER, true, 1.4))
+	# The wall clock shows facility time.
+	var hms := Run.clock_hms()
+	var sec: float = hms.z
+	var minute: float = hms.y + sec / 60.0
+	var hour: float = fmod(hms.x, 12.0) + minute / 60.0
 	_second_hand.rotation.z = -sec / 60.0 * TAU
 	_minute_hand.rotation.z = -minute / 60.0 * TAU
 	_hour_hand.rotation.z = -hour / 12.0 * TAU
 	# Receive lamp flickers now and then, like faint carrier traffic.
-	var rx := (fmod(_t, 5.0) < 0.6 and sin(_t * 31.0) > 0.0) or _t < _rx_until
+	var rx := (fmod(_t, 5.0) < 0.6 and sin(_t * 31.0) > 0.0) or _t < _rx_until or (_t < _live_until and fmod(_t, 0.3) < 0.2)
 	BuildKit.set_mat(_rx_lamp, BuildKit.lamp(BuildKit.GREEN, rx))
+	_process_ring(delta)
 
 
 func _build_desk(p: Node3D) -> void:
@@ -86,7 +106,7 @@ func _build_printer(p: Node3D) -> void:
 	K.label(p, "TELEPRINTER", Vector3(-0.05, 0.13, 0.192), 0.016, TEXT_DARK)
 	var area := Interactable.make(p, Vector3(0.48, 0.48, 0.46), Vector3(0, 0.22, 0.02), "Teleprinter")
 	area.activated.connect(func(_hit: Vector3) -> void:
-		if _orders and _orders.has_order():
+		if (_orders and _orders.has_order()) or not Run.traffic.is_empty():
 			get_tree().call_group("message_reader", "open_current")
 			return
 		var tw := create_tween()
@@ -97,6 +117,8 @@ func _build_printer(p: Node3D) -> void:
 
 ## Prints the order on the 3D sheet; the reader shows the full text.
 func _on_order_state(state: int) -> void:
+	if _orders.restoring:
+		return
 	var o: Dictionary = _orders.order
 	var lines := "%s  %s\n%s\n%s" % [o.id, o.fields[0][1], o.fields[3][1], o.fields[1][1]]
 	if state == _orders.State.PENDING:
@@ -108,9 +130,101 @@ func _on_order_state(state: int) -> void:
 		tw.tween_property(_sheet, "position:y", 0.2, 0.3)
 		_sheet_text.text = lines + "\n-- REPLY REQUIRED --"
 	elif _orders.has_order():
-		var word := "ACCEPTED" if state == _orders.State.ACCEPTED else "REFUSED"
+		var word: String = _orders.word()
 		_sheet_text.text = lines + "\n-- %s %s --" % [word, _orders.decided_at]
 		_printer_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, true, 1.4)
+
+
+## Paper feeds out in short jerks whenever new traffic prints.
+func _feed_paper() -> void:
+	var tw := create_tween()
+	for i in range(4):
+		tw.tween_property(_sheet, "position:y", 0.2 + (i + 1) * 0.008, 0.08)
+		tw.tween_interval(0.12)
+	tw.tween_property(_sheet, "position:y", 0.2, 0.3)
+	if not Run.traffic.is_empty():
+		var it: Dictionary = Run.traffic[-1]
+		_sheet_text.text = "%s  %s\n%s\n%s\n-- %s --" % [it.id, it.time, it.subject.substr(0, 28), it.source.substr(0, 28), it.verification]
+
+
+# --- Telephone ----------------------------------------------------------------------------
+
+## Incoming call (from the Director). The bell is heard first; the hook
+## lamp only starts blinking after the first ring.
+func ring(call: Dictionary) -> void:
+	_call = call
+	_ring_left = RING_TIMEOUT
+	_ring_next = 0.0
+
+
+func is_ringing() -> bool:
+	return not _call.is_empty()
+
+
+func _process_ring(delta: float) -> void:
+	if _call.is_empty():
+		return
+	_ring_left -= delta
+	_ring_next -= delta
+	if _ring_next <= 0.0:
+		Sfx.play("phone_ring", -3.0)
+		_ring_next = 4.0
+	if _ring_left < RING_TIMEOUT - 1.0:
+		BuildKit.set_mat(_hook_lamp, BuildKit.lamp(BuildKit.AMBER, fmod(_t, 0.5) < 0.25, 2.4))
+	if _ring_left <= 0.0:
+		var c := _call
+		_call = {}
+		BuildKit.set_mat(_hook_lamp, BuildKit.lamp(BuildKit.AMBER, false))
+		get_tree().call_group("director", "call_missed", c)
+
+
+func _answer() -> void:
+	var c := _call
+	_call = {}
+	Subtitles.clear()                    # the caller speaks over everything
+	for i in range(c.lines.size()):
+		Subtitles.say(c.caller, c.lines[i], 0.0, true)
+	get_tree().call_group("director", "call_answered", c)
+
+
+## Simulated tap (tests and the Director's answer helper).
+func answer_phone() -> void:
+	if not _phone_state.lifted:
+		_lift_phone.call(true)
+		if not _call.is_empty():
+			_answer()
+
+
+# --- Radio --------------------------------------------------------------------------------------
+
+## A transmission on `item.channel`, audible for a while. Logged by the
+## Director (unless intercept logging on that channel was ordered off).
+func radio_traffic(item: Dictionary, logged: bool) -> void:
+	_live = item.duplicate()
+	_live.logged = logged
+	_live_until = _t + 40.0
+	Sfx.play("radio_burst", -4.0)
+
+
+func _on_radio(_hit: Vector3) -> void:
+	_rx_until = _t + 0.5
+	Sfx.play("switch_click", -10.0)
+	if not _live.is_empty() and _t < _live_until:
+		# Tune straight to the live channel and listen.
+		_channel = CHANNELS.find(_live.channel) if CHANNELS.has(_live.channel) else _channel
+		_freq.text = CHANNELS[_channel]
+		Sfx.play("radio_burst", -6.0, 0.9)
+		Subtitles.clear()
+		for l in _live.get("lines", []):
+			Subtitles.say("RADIO %s" % _live.channel, l, 0.0, true)
+		if not _live.logged:
+			Subtitles.say("", "(Not logged: channel %s, standing order.)" % _live.channel, 3.0, true)
+		_live = {}
+		return
+	_channel = (_channel + 1) % CHANNELS.size()
+	_freq.text = CHANNELS[_channel]
+	Sfx.play("static_loop", -18.0)
+	_toast("CHANNEL %d  %s  -  NO TRAFFIC" % [_channel + 1, CHANNELS[_channel]])
 
 
 func _build_radio(p: Node3D) -> void:
@@ -131,14 +245,9 @@ func _build_radio(p: Node3D) -> void:
 	K.box(p, Vector3(0.003, 0.06, 0.004), Vector3(-0.16, 0.2, front + 0.008), K.mat("needle"), Vector3(0, 0, -25))
 	# Frequency readout (placeholder value).
 	K.box(p, Vector3(0.16, 0.05, 0.01), Vector3(0.1, 0.22, front), K.mat("bakelite"))
-	var freq := K.label(p, CHANNELS[0], Vector3(0.1, 0.22, front + 0.007), 0.034, BuildKit.AMBER)
+	_freq = K.label(p, CHANNELS[0], Vector3(0.1, 0.22, front + 0.007), 0.034, BuildKit.AMBER)
 	var area := Interactable.make(p, Vector3(w + 0.06, h + 0.2, d + 0.08), Vector3(0, (h + 0.14) * 0.5, 0.04), "Radio")
-	var state := {"ch": 0}
-	area.activated.connect(func(_hit: Vector3) -> void:
-		state.ch = (state.ch + 1) % CHANNELS.size()
-		freq.text = CHANNELS[state.ch]
-		_rx_until = _t + 0.5
-		_toast("CHANNEL %d  %s  -  NO TRAFFIC" % [state.ch + 1, CHANNELS[state.ch]]))
+	area.activated.connect(_on_radio)
 	# Knobs and small switches.
 	for i in range(4):
 		K.cyl(p, 0.022, 0.025, Vector3(-0.19 + i * 0.1, 0.09, front + 0.012), K.mat("bakelite"), Vector3(90, 0, 0), 10)
@@ -184,19 +293,29 @@ func _build_telephone(p: Node3D) -> void:
 		K.cyl(hs, 0.03, 0.05, Vector3(s * 0.1, -0.012, 0), black, Vector3.ZERO, 10)
 	K.label(p, "LINE 1", Vector3(0, 0.035, 0.121), 0.012, Color(0.7, 0.68, 0.6))
 	var hook_lamp := K.cyl(p, 0.008, 0.01, Vector3(0.08, 0.035, 0.121), K.lamp(BuildKit.AMBER, false), Vector3(90, 0, 0), 8, -1.0, false)
+	_hook_lamp = hook_lamp
 	# Coiled cord, simplified to a sagging run; rebuilt when the handset moves.
 	var cord := [_phone_cord(p, rest)]
 	var area := Interactable.make(p, Vector3(0.3, 0.3, 0.34), Vector3(0, 0.13, 0.0), "Telephone")
-	var state := {"lifted": false}
-	area.activated.connect(func(_hit: Vector3) -> void:
-		state.lifted = not state.lifted
-		var pose: Transform3D = lifted if state.lifted else rest
+	var state := _phone_state
+	_lift_phone = func(up: bool) -> void:
+		state.lifted = up
+		var pose: Transform3D = lifted if up else rest
 		var tw := create_tween()
 		tw.tween_property(hs, "transform", pose, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		cord[0].queue_free()
 		cord[0] = _phone_cord(p, pose)
-		hook_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, state.lifted)
-		_toast("LINE 1: NO CALL - DIAL TONE ONLY" if state.lifted else "HANDSET REPLACED"))
+		hook_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, up)
+		Sfx.play("switch_click", -8.0, 0.7)
+	area.activated.connect(func(_hit: Vector3) -> void:
+		var up: bool = not state.lifted
+		_lift_phone.call(up)
+		if up and not _call.is_empty():
+			_answer()
+		elif up:
+			_toast("LINE 1: NO CALL - DIAL TONE ONLY")
+		else:
+			_toast("HANDSET REPLACED"))
 
 
 func _phone_cord(p: Node3D, handset: Transform3D) -> Node3D:

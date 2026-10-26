@@ -19,7 +19,6 @@ var _px := 24
 func _ready() -> void:
 	theme = UiKit.theme()
 	_px = UiKit.text_px(get_viewport())
-	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)

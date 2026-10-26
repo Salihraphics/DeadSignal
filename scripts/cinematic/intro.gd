@@ -506,14 +506,14 @@ func _build_ui() -> void:
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ui.add_child(_fade)
 	_caption = Label.new()
 	_caption.theme = UiKit.theme()
 	_caption.add_theme_font_size_override("font_size", 30)
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_caption.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_caption.modulate.a = 0.0
 	ui.add_child(_caption)
 	_skip = Button.new()

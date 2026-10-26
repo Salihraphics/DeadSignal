@@ -31,11 +31,11 @@ var _log_shown := 0
 
 func _ready() -> void:
 	theme = UiKit.theme()
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_px = UiKit.text_px(get_viewport())
 	var bg := ColorRect.new()
 	bg.color = UiKit.BG
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	_build()
 	add_child(UiKit.Scanlines.new())
@@ -60,7 +60,7 @@ func _rebuild() -> void:
 func _build() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var m := int(minf(vs.x, vs.y) * 0.06)
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, m)
@@ -133,7 +133,7 @@ func _add(text: String, cb: Callable, id: String) -> void:
 func _overlay(panel: Control) -> void:
 	var vs := get_viewport().get_visible_rect().size
 	var m := minf(vs.x, vs.y) * 0.05
-	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.offset_left = m
 	panel.offset_top = m
 	panel.offset_right = -m

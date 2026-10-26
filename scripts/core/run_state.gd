@@ -52,6 +52,8 @@ var last_vice_at := -1000.0
 var calls_answered := 0
 var calls_missed := 0
 var ending := ""
+## Statistics frozen at the end of the run (after-action report).
+var final_stats := {}
 var strategic := {}        # StrategicState snapshot (see capture)
 var order_snapshot := {}   # OrderManager snapshot
 
@@ -115,10 +117,19 @@ func _reset() -> void:
 	order_snapshot = {}
 
 
-## Ends the run: the save is removed so CONTINUE disappears.
+## Ends the run: freezes the statistics, then removes the save so
+## CONTINUE disappears and the ending cannot be replayed from it.
 func finish(ending_id: String) -> void:
+	var st := get_tree().get_first_node_in_group("strategy")
+	if st and st.has_method("snapshot"):
+		strategic = st.snapshot()
 	ending = ending_id
+	final_stats = stats()
+	final_stats.ending = ending_id
+	final_stats.decisions = decisions.duplicate(true)
+	final_stats.resources_left = int(strategic.get("resources", 0))
 	active = false
+	Dialogue.enabled = false
 	delete_save()
 
 
