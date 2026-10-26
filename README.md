@@ -92,9 +92,11 @@ Playing
 
 **One continuous shift.** There are no days or missions. Traffic and orders keep arriving until one of three endings. The game saves automatically (after every decision and event, every 30 s, and when the app is paused or closed); `MENU` → `SAVE AND EXIT TO MENU` returns to the menu, and `CONTINUE` resumes exactly where you left off without repeating anything.
 
-The first part, **SILENT FRONT** (about 9 minutes, no launch authority), is a routine shift: Central reports the Karsen sector as controlled, but its basis is a field report from the previous evening, the line to Karsen is dead, and a radio fragment says otherwise. You can check timestamps, sources and verification, and request confirmation. The answer never quite comes.
+The first part, **SILENT FRONT** (about 5½ minutes, no launch authority), is a routine shift: Central reports the Karsen sector as controlled, but its basis is a field report from the previous evening, the line to Karsen is dead, and a radio fragment says otherwise. You can check timestamps, sources and verification, and request confirmation. The answer never quite comes.
 
-After that, **orders** arrive one by one on the teleprinter. They get harder and less clear. Each has a reply deadline (no reply is recorded as such). Consequences often surface several orders later. Refusing is not always right, and neither is obeying. Fire missions grant launch authority for one grid and a maximum category only.
+After that, ten **orders** arrive on the teleprinter, each sooner than the last (about every 2¼ minutes at first, every 1⅓ minutes at the end), with field reports, intercepts from other fronts, calls and notices in between. They get harder and less clear. Each has a reply deadline (no reply is recorded as such). Consequences surface one to three orders later. Refusing is not always right, and neither is obeying. Fire missions grant launch authority for one grid and a maximum category only. Notifications are spaced so they never stack on screen. A full shift is about 24 minutes.
+
+All pacing lives in `data/pacing.tres` (`PacingConfig`): SILENT FRONT length, order intervals and escalation curve, reply deadlines, consequence delay, minimum spacing between notifications, the end assessment and the distant-rumble ambience. Edit it in the Godot inspector.
 
 How it works:
 
@@ -103,13 +105,15 @@ How it works:
 - **Telephone.** When it rings, tap it to answer (the call is subtitled with its caller). Unanswered calls are logged as missed.
 - **Radio.** While the RX lamp flickers with live traffic, tap the radio to listen.
 - **Orders.** `ACCEPT` / `REFUSE` need a confirming second tap. The decision is stamped, recorded and cannot be changed.
-- **Launch.** As before (map knobs → `CONFIRM GRID` → `S`/`M`/`L` → KEY → MASTER twice), but only within an accepted fire order's grid and category.
+- **Launch.** Accept a fire order; on the map confirm its grid; pick `S`/`M`/`L` within its category; turn the KEY. Then **MASTER once** lifts the cover and asks you to confirm exactly that grid and ammunition (shown on the centre CRT); **MASTER again within 10 s** starts the 5 s countdown (ABORT, KEY to SAFE or closing the cover still stop it). If something is missing, MASTER says what and nothing opens. Changing the selection, ABORT before the countdown, KEY to SAFE or waiting 10 s withdraws the confirmation and keeps your selection. One launch per order.
 
 **Endings.** Exactly three, decided by the hidden state of the run (command trust, front stability and information integrity), never selectable: relieved of duty; Varnesk falls; Norvak survives. Each is followed by an **after-action report** that lists only what the game tracked: orders (followed, refused, no reply), reports and how many were unverified, confirmation requests, intercepts, calls, launches with their reported results, allocation units spent, beers and cigarettes. No casualty figures.
 
 **The operator** talks rarely: tired, restrained, observant, now and then dry. Lines react to what happens (beer, cigarettes, silence, unanswered requests, approvals, reports) and reveal a few personal details slowly. One-time lines never repeat, even across saves.
 
-**Beer and cigarettes** at the right corner of the main desk are purely atmospheric: no meters, bonuses or penalties, and no effect on any outcome. Each completed drink or cigarette is counted once (for the report). A second beer in a row gives one very slight, brief camera shake (none with reduced motion).
+**Beer and cigarettes** at the right corner of the main desk are purely atmospheric: no meters, bonuses or penalties, and no effect on any outcome. Tap the bottles: the hand lifts one to the mouth, the head tips back, it goes back down. Tap the pack: take a cigarette, light it, inhale, exhale, leave it burning in the ashtray (tap again to take it back up; no limit). Each completed action counts once (for the report); taps during an action are ignored.
+
+Beers in a row (each within 2½ minutes of the last) make the operator temporarily drunk: one does nothing; two give a gentle, slow sway for about 30 s; three a stronger one for about 40 s; a fourth brings a brief, non-graphic reaction (he turns away and retches), after which the sway continues mildly and recovers. Further drinks repeat that cycle. Only the camera drifts: no blur, the HUD and screens stay readable, controls always work, and **reduced motion** cuts the sway to a quarter. All values are in `scripts/game/intoxication.gd` (exported).
 
 Map conventions: one fixed fictional sheet (160 x 120 km, north up). Grid squares are 40 km (`P`-`S` west to east, `R`-`T` north to south) split into 4 km cells numbered by easting then northing (counted from the square's south edge). `RS-27` is the cell 88-92 km east, 48-52 km south, 12 km east of Karsen Junction. Varnesk lies off this sheet to the west. Reported intelligence is shown dashed in amber and is not confirmed; what is really there is only revealed by events. Zoom is anchored on the cursor.
 
@@ -203,7 +207,9 @@ scripts/game/endings.gd    The three endings
 scripts/cinematic/         Opening cinematic and epilogue
 scripts/ui/                Menu (main_menu, menu_backdrop, menu_item), settings,
                            pause, after-action report, shared style (ui_kit)
-scripts/vices.gd           Beer and cigarettes
+scripts/vices.gd           Beer and cigarettes (first-person actions)
+scripts/game/intoxication.gd Temporary intoxication state machine
+scripts/data/pacing_config.gd, data/pacing.tres  Shift pacing
 scripts/message_reader.gd  Orders, reports and the traffic log on paper
 scripts/comms_station.gd   Telephone, radio, teleprinter, clock
 scripts/strategic_state.gd Shared map/target/launch state, authority
