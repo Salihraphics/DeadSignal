@@ -115,9 +115,11 @@ func _reset() -> void:
 	_glow.visible = false
 
 
-func _build_missile() -> void:
+## The missile's body (8.5 m, nozzle at y = -0.27, nose at 8.5), shared
+## with the main menu backdrop. Returns its root node.
+static func build_body(parent: Node3D) -> Node3D:
 	var K := BuildKit
-	_missile = K.pivot(self, Vector3.ZERO)
+	var _missile := K.pivot(parent, Vector3.ZERO)
 	var olive := StandardMaterial3D.new()
 	olive.albedo_color = Color(0.3, 0.34, 0.26)
 	olive.roughness = 0.65
@@ -135,8 +137,13 @@ func _build_missile() -> void:
 	for i in range(4):
 		var a := PI * 0.25 + i * PI * 0.5
 		K.box(_missile, Vector3(0.45, 1.1, 0.04), Vector3(cos(a) * 0.7, 0.75, sin(a) * 0.7), K.mat("metal_dark"), Vector3(0, -rad_to_deg(a), 0))
+	return _missile
+
+
+func _build_missile() -> void:
+	_missile = build_body(self)
 	# Stencilled designation on the side facing the window.
-	_label = K.label(_missile, "NV-M4", Vector3(0, 3.6, 0.505), 0.32, Color(0.85, 0.83, 0.75), Vector3(0, 0, 90), true)
+	_label = BuildKit.label(_missile, "NV-M4", Vector3(0, 3.6, 0.505), 0.32, Color(0.85, 0.83, 0.75), Vector3(0, 0, 90), true)
 
 
 func _build_effects() -> void:

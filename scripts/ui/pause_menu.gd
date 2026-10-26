@@ -34,7 +34,7 @@ func _ready() -> void:
 	_list.custom_minimum_size.x = px * 18
 	panel.add_child(_list)
 	_list.add_child(UiKit.label("SHIFT PAUSED", int(px * 1.3)))
-	_list.add_child(UiKit.label("FACILITY CLOCK %s" % Run.hhmm(), int(px * 0.8), UiKit.GREEN_DIM))
+	_list.add_child(UiKit.label("FACILITY CLOCK %s" % Run.hhmm(), int(px * 0.8), UiKit.MUTED))
 	for item in [["> RESUME", close, "Resume"], ["> SETTINGS", _open_settings, "SettingsButton"],
 			["> SAVE AND EXIT TO MENU", _exit_to_menu, "ExitMenu"]]:
 		var b := UiKit.button(item[0], item[1], item[2])
