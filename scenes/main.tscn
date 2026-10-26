@@ -1,0 +1,63 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/command_room.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/main_console.gd" id="2_console"]
+[ext_resource type="Script" path="res://scripts/crt_monitor.gd" id="3_crt"]
+[ext_resource type="Script" path="res://scripts/comms_station.gd" id="4_comms"]
+[ext_resource type="Script" path="res://scripts/status_station.gd" id="5_status"]
+[ext_resource type="Script" path="res://scripts/operator_camera.gd" id="6_camera"]
+[ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/interaction.gd" id="8_interaction"]
+
+[node name="Main" type="Node3D"]
+
+[node name="CommandRoom" type="Node3D" parent="."]
+script = ExtResource("1_room")
+
+[node name="MainConsole" type="Node3D" parent="."]
+script = ExtResource("2_console")
+
+[node name="MonitorLeft" type="Node3D" parent="MainConsole"]
+transform = Transform3D(0.913545, 0, 0.406737, 0, 1, 0, -0.406737, 0, 0.913545, -0.56, 0.955, -0.93)
+script = ExtResource("3_crt")
+screen_size = Vector2(0.3, 0.225)
+resolution = Vector2i(256, 192)
+content = 0
+
+[node name="MonitorCenter" type="Node3D" parent="MainConsole"]
+transform = Transform3D(1, 0, 0, 0, 0.994522, 0.104528, 0, -0.104528, 0.994522, 0, 1.03, -1.0)
+script = ExtResource("3_crt")
+screen_size = Vector2(0.44, 0.33)
+resolution = Vector2i(320, 240)
+content = 1
+
+[node name="MonitorRight" type="Node3D" parent="MainConsole"]
+transform = Transform3D(0.913545, 0, -0.406737, 0, 1, 0, 0.406737, 0, 0.913545, 0.56, 0.955, -0.93)
+script = ExtResource("3_crt")
+screen_size = Vector2(0.3, 0.225)
+resolution = Vector2i(256, 192)
+content = 2
+
+[node name="CommsStation" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -1.625, 0, -0.45)
+script = ExtResource("4_comms")
+
+[node name="StatusStation" type="Node3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 1.625, 0, -0.45)
+script = ExtResource("5_status")
+
+[node name="OperatorCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0.18)
+current = true
+fov = 62.0
+near = 0.03
+far = 40.0
+script = ExtResource("6_camera")
+
+[node name="HUD" parent="." node_paths=PackedStringArray("camera") instance=ExtResource("7_hud")]
+camera = NodePath("../OperatorCamera")
+
+[node name="Interaction" type="Node" parent="." node_paths=PackedStringArray("camera", "hud")]
+script = ExtResource("8_interaction")
+camera = NodePath("../OperatorCamera")
+hud = NodePath("../HUD")

@@ -69,10 +69,11 @@ Technology
 
 Roadmap
 
-- [ ] Create the initial Godot project.
-- [ ] Build the 3D command room.
-- [ ] Implement limited seated camera movement.
-- [ ] Create CRT displays and analogue control panels.
+- [x] Create the initial Godot project.
+- [x] Build the 3D command room. *(Stage 1 prototype)*
+- [x] Implement limited seated camera movement. *(Stage 1 prototype)*
+- [ ] Create CRT displays and analogue control panels. *(placeholders in place)*
+- [x] Basic placeholder interactions and focus mode.
 - [ ] Add lighting, materials, and environmental details.
 - [ ] Implement communications and incoming orders.
 - [ ] Add fictional map and radar interfaces.
@@ -80,6 +81,77 @@ Roadmap
 - [ ] Implement battlefield simulation and decision consequences.
 - [ ] Add endings, statistics, and sound design.
 - [ ] Optimise and test on Android.
+
+Running the Prototype
+
+The current build is the command room, the seated camera and basic placeholder interactions. No gameplay systems exist yet: no orders, calls, targets or launches.
+
+Controls
+
+| Action | Touch (Android) | Desktop |
+| --- | --- | --- |
+| Look around (limited) | Drag anywhere | Left-mouse drag |
+| Turn to comms / status station | `< COMMS` / `STATUS >` buttons | `A` / `D` or arrow keys |
+| Face the main console again | `CONSOLE` button or double-tap empty space | Double-click, `R`, `Space` or `Home` |
+| Use a control / lean in to a screen or panel | Tap it | Click it |
+| Leave a focused view | `< BACK`, double-tap empty space, or Android back | `Esc`, `R`, `Space` |
+
+The view turns about 80° to either side and tilts slightly up and down. The operator cannot stand, walk or turn around. A press that moves is always a look-drag; only a short tap interacts, and on-screen buttons never turn the view.
+
+Interactive objects (placeholder feedback only)
+
+| Where | Object | Response |
+| --- | --- | --- |
+| Main desk | Three CRT screens | Lean in (focus). Tapping the glass marks the touch point. Map: `ZOOM +/-`; control: `SELF TEST`; radar: `RANGE` |
+| Main desk | Five toggle switches | Lever flips, status message |
+| Main desk | Six push buttons | Button presses in and lights |
+| Main desk | Three knobs | Knob turns, steps the amber counter |
+| Main desk | MASTER cover and key | "MASTER CONTROLS LOCKED" (not part of this stage) |
+| Comms | Telephone | Handset lifts / hangs up, off-hook lamp |
+| Comms | Radio transceiver | Cycles placeholder channels |
+| Comms | Teleprinter | Paper feeds, "no new messages" |
+| Comms | Communication lines panel | Lean in; six line switches toggle their lamps |
+| Status | Facility status panel | Lean in; breakers CB-1..4 open/close and move their power meters |
+
+Small or distant controls (the comms line switches and the status breakers) only work after leaning in to their panel, so every touch target stays comfortably large.
+
+Getting the APK onto a phone (no desktop needed)
+
+1. Every push to this repository runs the "Android APK" GitHub Actions workflow.
+2. On GitHub, open the **Actions** tab → the latest **Android APK** run → download **DeadSignal-debug-apk** under *Artifacts*.
+3. Unzip it on the phone and open `DeadSignal-debug.apk`. Android will ask you to allow installing from that app (browser or file manager) once.
+4. If an update refuses to install over an older build, uninstall the old one first (debug builds may be signed with different keys).
+
+Opening the project in an editor
+
+- **Android:** install the official *Godot Engine 4* editor (4.5 or newer) from Google Play, clone or download this repository to the phone, then *Import* the folder containing `project.godot`.
+- **Desktop:** Godot 4.5+ → *Import* → select `project.godot` → press *Run* (F5).
+
+The renderer is *Compatibility* (OpenGL ES 3) for the widest range of Android phones.
+
+Project Structure
+
+```
+project.godot            Engine settings (landscape, Compatibility renderer)
+export_presets.cfg       Android export preset (debug APK, arm64 + armv7)
+scenes/main.tscn         The room: shell, three stations, camera, HUD
+scenes/hud.tscn          Touch buttons, control hint, FPS readout
+scripts/build_kit.gd     Shared geometry helpers + material/colour palette
+scripts/command_room.gd  Walls, observation window, launch shaft, lights
+scripts/main_console.gd  Main desk and slanted control panel
+scripts/crt_monitor.gd   CRT monitor (bezel, tube, live screen)
+scripts/screen_content.gd Placeholder CRT content: map / control / radar
+scripts/comms_station.gd Left: telephone, radio, printer, reports, clock
+scripts/status_station.gd Right: gauges, power meters, readiness, warnings
+scripts/operator_camera.gd Seated camera limits, views, focus lean, touch/mouse/keys
+scripts/interactable.gd  Invisible tap target / focus zone used by props
+scripts/interaction.gd   Turns taps into hits, manages focus mode and back
+shaders/crt.gdshader     Scanlines, curvature and vignette for CRTs
+assets/flags/            Approved country flags (unchanged originals)
+assets/textures/         Low-res worn textures (tools/gen_textures.py)
+```
+
+Room geometry is generated by small scripts at load time, so positions of whole stations and monitors can still be moved in the editor via their nodes in `main.tscn`.
 
 Project Status
 
