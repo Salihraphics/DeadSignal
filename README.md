@@ -86,7 +86,7 @@ Roadmap
 
 Playing
 
-**Main menu** (the entry screen): `CONTINUE` (only when a shift is saved), `NEW GAME`, `SETTINGS`, `CREDITS`, `EXIT`.
+**Main menu** (the entry screen): a live 3D view into the missile hall, with a strategic missile in its cradle, a control gallery and dim CRTs; the menu sits on the left. `CONTINUE` (enabled only when a shift is saved), `NEW GAME`, `SETTINGS`, `CREDITS`, `EXIT`. The facility status panel and footer are decorative and never change. The backdrop is light: one spot light (shadows above LOW), one fill light, emissive fittings, and a very slow camera drift that reduced motion turns off.
 
 **NEW GAME** plays the opening cinematic (about 85 s, skippable with two taps on `SKIP` or the Android back gesture): a briefing in front of a whiteboard of the three enemy fronts, a report quietly set aside, radio traffic that does not match the briefing. Then the operator is alone at Launch Control Post K-4 as the screens warm up. There is no mission select; the shift simply begins.
 
@@ -201,7 +201,8 @@ scripts/order_catalog.gd   Order texts, effects, launch authority
 scripts/game/director.gd   Runs the shift: cues, beats, orders, consequences, assessment
 scripts/game/endings.gd    The three endings
 scripts/cinematic/         Opening cinematic and epilogue
-scripts/ui/                Menu, settings, pause, after-action report, shared style
+scripts/ui/                Menu (main_menu, menu_backdrop, menu_item), settings,
+                           pause, after-action report, shared style (ui_kit)
 scripts/vices.gd           Beer and cigarettes
 scripts/message_reader.gd  Orders, reports and the traffic log on paper
 scripts/comms_station.gd   Telephone, radio, teleprinter, clock
@@ -211,6 +212,8 @@ scripts/map/               Map grid, geography, knowledge queries, renderer
 tools/gen_textures.py      Placeholder textures
 tools/gen_sounds.py        Placeholder sound effects
 assets/flags/              Approved country flags (unchanged originals)
+assets/fonts/              Liberation Sans Bold (SIL OFL 1.1), JetBrains Mono
+                           (Apache 2.0), with their licence files
 ```
 
 Project Status
