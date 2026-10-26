@@ -34,7 +34,7 @@ func _process(delta: float) -> void:
 		n.cur = lerpf(n.cur, n.base, 1.0 - exp(-4.0 * delta))
 		n.node.rotation.z = deg_to_rad(n.cur + wobble * n.range)
 	var on := fmod(_t, 2.0) < 1.0
-	_filter_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, on)
+	BuildKit.set_mat(_filter_lamp, BuildKit.lamp(BuildKit.AMBER, on))
 
 
 func _build_panel(p: Node3D) -> void:

@@ -46,7 +46,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	var on := _t < _activity_until and fmod(_t, 0.2) < 0.1
-	_activity_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, on, 1.8)
+	BuildKit.set_mat(_activity_lamp, BuildKit.lamp(BuildKit.AMBER, on, 1.8))
 
 
 func _pulse() -> void:

@@ -64,6 +64,13 @@ static func label(parent: Node3D, text: String, pos: Vector3, size := 0.018,
 	return l
 
 
+## Assigns a material only when it differs (avoids redundant per-frame
+## updates to the rendering server from animated lamps).
+static func set_mat(mi: GeometryInstance3D, m: Material) -> void:
+	if mi.material_override != m:
+		mi.material_override = m
+
+
 ## Snaps a lever pivot to its up/down position with a small overshoot.
 static func flip_lever(hinge: Node3D, up: bool, angle := 28.0) -> void:
 	var tw := hinge.create_tween()
@@ -142,7 +149,7 @@ static func mat(name: String) -> StandardMaterial3D:
 
 ## Self-lit indicator lamp. `lit` false gives the dim, unpowered cap.
 static func lamp(color: Color, lit := true, energy := 2.2) -> StandardMaterial3D:
-	var key := "lamp_%s_%s_%s" % [color.to_html(), lit, energy]
+	var key := [color, lit, energy]          # value key: no string building per frame
 	if _materials.has(key):
 		return _materials[key]
 	var m := StandardMaterial3D.new()

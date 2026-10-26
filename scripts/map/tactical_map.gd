@@ -28,26 +28,43 @@ var inner := Vector2(480, 356)
 var state: Node
 var _font: Font
 var _blink := true
+## CPU time of the last full redraw (ms), for profiling.
+var last_draw_ms := 0.0
+## Cursor and footer readouts live on this overlay, so moving the cursor
+## or blinking it does not re-record the whole map (2-12 ms per redraw).
+var _overlay: Node2D
+var _canvas: CanvasItem
 
 
 func _ready() -> void:
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Droid Sans Mono", "Courier New", "monospace"])
 	_font = mono
+	_canvas = self
 	state = get_tree().get_first_node_in_group("strategy")
 	inner = size - SAFE * 2.0
 	state.view_px = Vector2(inner.x, inner.y - HEADER_H - FOOTER_H)
 	state.map_zoom = state.min_zoom()
-	state.map_changed.connect(queue_redraw)
-	state.selection_changed.connect(queue_redraw)
+	_overlay = Node2D.new()
+	_overlay.position = SAFE
+	_overlay.draw.connect(_draw_overlay)
+	add_child(_overlay)
+	state.map_changed.connect(_redraw_all)
+	state.selection_changed.connect(_redraw_all)
+	state.cursor_moved.connect(_overlay.queue_redraw)
 	state.launch_changed.connect(func(_s: int) -> void: queue_redraw())
 	var t := Timer.new()
 	t.wait_time = 0.5
 	t.autostart = true
 	t.timeout.connect(func() -> void:
 		_blink = not _blink
-		queue_redraw())
+		_overlay.queue_redraw())
 	add_child(t)
+
+
+func _redraw_all() -> void:
+	queue_redraw()
+	_overlay.queue_redraw()
 
 
 # --- CRT content API (see crt_monitor.gd) ------------------------------------------
@@ -89,6 +106,12 @@ func _on(layer: String) -> bool:
 # --- Drawing ----------------------------------------------------------------------------
 
 func _draw() -> void:
+	var t0 := Time.get_ticks_usec()
+	_draw_map()
+	last_draw_ms = (Time.get_ticks_usec() - t0) / 1000.0
+
+
+func _draw_map() -> void:
 	var z: float = state.map_zoom
 	draw_rect(Rect2(Vector2.ZERO, size), BG)
 	draw_set_transform(SAFE)
@@ -115,32 +138,37 @@ func _draw() -> void:
 	_draw_exits()
 	_draw_strikes()
 	_draw_target(z)
-	_draw_cursor()
 	_draw_compass_and_scale(z)
 	_draw_header()
+
+
+func _draw_overlay() -> void:
+	_canvas = _overlay
+	_draw_cursor()
 	_draw_footer()
+	_canvas = self
 
 
 func _text(pos: Vector2, s: String, col: Color, fsize := 11, centered := false) -> void:
 	if centered:
 		pos.x -= _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x * 0.5
-	draw_string(_font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, col)
+	_canvas.draw_string(_font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, col)
 
 
 func _draw_terrain(z: float) -> void:
 	var d := MapData.derived()
+	# Thousands of contour segments: draw them in map km through one
+	# km->pixel transform (the same projection as px()) instead of
+	# converting every point in script. Width -1 keeps them 1 px hairlines.
+	draw_set_transform(SAFE + px(Vector2.ZERO), 0.0, Vector2(z, z))
 	for c in d.contours:
 		var index: bool = MapData.INDEX_LEVELS.has(c.level)
 		if not index and z < MEDIUM:
 			continue
-		var segs := PackedVector2Array()
-		for p in c.segments:
-			segs.append(px(p))
-		draw_multiline(segs, Color(0.35, 1.0, 0.45, 0.42 if index else 0.24), 1.0)
-	for f in MapData.FORESTS:
-		var outline := _poly(f)
-		outline.append(outline[0])
-		draw_polyline(outline, Color(0.35, 1.0, 0.45, 0.32), 1.0)
+		draw_multiline(c.segments, Color(0.35, 1.0, 0.45, 0.42 if index else 0.24), -1.0)
+	for f in _forest_outlines():
+		draw_polyline(f, Color(0.35, 1.0, 0.45, 0.32), -1.0)
+	draw_set_transform(SAFE)
 	if z >= MEDIUM:
 		var tick := PackedVector2Array()
 		for m in d.forest_marks:
@@ -156,6 +184,17 @@ func _draw_terrain(z: float) -> void:
 			draw_arc(q, 4.0, PI * 0.15, PI * 0.85, 6, MID, 1.0)
 			draw_arc(q + Vector2(0, 6), 4.0, -PI * 0.85, -PI * 0.15, 6, MID, 1.0)
 			_text(q + Vector2(6, 3), p.name, MID, 10)
+
+
+static var _outlines: Array[PackedVector2Array] = []
+
+static func _forest_outlines() -> Array[PackedVector2Array]:
+	if _outlines.is_empty():
+		for f in MapData.FORESTS:
+			var closed := PackedVector2Array(f)
+			closed.append(f[0])
+			_outlines.append(closed)
+	return _outlines
 
 
 func _draw_grid(z: float) -> void:
@@ -434,11 +473,12 @@ func _draw_target(z: float) -> void:
 
 
 func _draw_cursor() -> void:
+	var o := _canvas
 	var c := px(state.cursor)
 	for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
-		draw_line(c + d * 4, c + d * 14, GREEN, 1.0)
-	draw_arc(c, 9.0, 0, TAU, 20, Color(GREEN, 0.5), 1.0)
-	draw_rect(Rect2(c - Vector2(1.5, 1.5), Vector2(3, 3)), AMBER if _blink else Color(AMBER, 0.5))
+		o.draw_line(c + d * 4, c + d * 14, GREEN, 1.0)
+	o.draw_arc(c, 9.0, 0, TAU, 20, Color(GREEN, 0.5), 1.0)
+	o.draw_rect(Rect2(c - Vector2(1.5, 1.5), Vector2(3, 3)), AMBER if _blink else Color(AMBER, 0.5))
 
 
 func _draw_compass_and_scale(z: float) -> void:
@@ -468,9 +508,10 @@ func _draw_header() -> void:
 
 
 func _draw_footer() -> void:
+	var o := _canvas
 	var y0 := inner.y - FOOTER_H
-	draw_rect(Rect2(-SAFE.x, y0, size.x, FOOTER_H + SAFE.y), BG)
-	draw_line(Vector2(0, y0 + 0.5), Vector2(inner.x, y0 + 0.5), Color(GREEN, 0.5), 1.0)
+	o.draw_rect(Rect2(-SAFE.x, y0, size.x, FOOTER_H + SAFE.y), BG)
+	o.draw_line(Vector2(0, y0 + 0.5), Vector2(inner.x, y0 + 0.5), Color(GREEN, 0.5), 1.0)
 	_text(Vector2(6, y0 + 14), "CUR " + MapGrid.ref_of(state.cursor), GREEN, 12)
 	_text(Vector2(110, y0 + 14), "TGT " + state.target_ref(), AMBER if state.has_target() else MID, 12)
 	if state.has_target():
@@ -488,7 +529,7 @@ func _draw_footer() -> void:
 		var on: bool = state.layers[state.LAYERS[i]]
 		var col := GREEN if on else Color(GREEN, 0.25)
 		if i == state.layer_index:
-			draw_rect(Rect2(x - 3, y0 + 19, 34, 14), AMBER, false, 1.0)
+			o.draw_rect(Rect2(x - 3, y0 + 19, 34, 14), AMBER, false, 1.0)
 		_text(Vector2(x, y0 + 30), tag, col, 11)
 		x += 40.0
 	_text(Vector2(x + 4, y0 + 30), state.LAYERS[state.layer_index] + (" ON" if state.layers[state.LAYERS[state.layer_index]] else " OFF"), AMBER, 10)

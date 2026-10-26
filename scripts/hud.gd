@@ -21,6 +21,7 @@ signal action_pressed(action_name: String)
 @onready var _actions: HBoxContainer = %Actions
 @onready var _toast: Label = %Toast
 @onready var _banner: Button = %OrderBanner
+@onready var _gfx: Button = %GfxButton
 
 var _toast_tween: Tween
 var _banner_tween: Tween
@@ -35,6 +36,14 @@ func _ready() -> void:
 	_back.pressed.connect(back_pressed.emit)
 	_banner.pressed.connect(func() -> void:
 		get_tree().call_group("message_reader", "open_current"))
+	var gfx := get_tree().get_first_node_in_group("graphics")
+	if gfx:
+		_gfx.text = gfx.label()
+		_gfx.pressed.connect(gfx.cycle)
+		gfx.preset_changed.connect(func(_m: String, _a: String) -> void:
+			_gfx.text = gfx.label())
+	else:
+		_gfx.visible = false
 	_orders = get_tree().get_first_node_in_group("orders")
 	if _orders:
 		_orders.state_changed.connect(_on_order_state)
@@ -44,11 +53,13 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	_fps.text = "%d FPS" % Engine.get_frames_per_second()
+	var fps := "%d FPS" % Engine.get_frames_per_second()
+	if _fps.text != fps:                  # avoid a label relayout every frame
+		_fps.text = fps
 
 
 func show_focus(title: String, actions: PackedStringArray) -> void:
-	for b in [_left, _forward, _right]:
+	for b in [_left, _forward, _right, _gfx]:
 		b.visible = false
 	_hint.visible = false
 	_back.visible = true
@@ -69,6 +80,7 @@ func show_focus(title: String, actions: PackedStringArray) -> void:
 func hide_focus() -> void:
 	for b in [_left, _forward, _right]:
 		b.visible = true
+	_gfx.visible = get_tree().get_first_node_in_group("graphics") != null
 	_back.visible = false
 	_title.visible = false
 	_actions.visible = false

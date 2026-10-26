@@ -46,7 +46,7 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _orders and _orders.is_pending():
 		# Teleprinter lamp blinks while a reply is outstanding.
-		_printer_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, fmod(_t, 0.8) < 0.4, 2.2)
+		BuildKit.set_mat(_printer_lamp, BuildKit.lamp(BuildKit.AMBER, fmod(_t, 0.8) < 0.4, 2.2))
 	var now := Time.get_time_dict_from_system()
 	var sec: float = now.second
 	var minute: float = now.minute + sec / 60.0
@@ -56,7 +56,7 @@ func _process(delta: float) -> void:
 	_hour_hand.rotation.z = -hour / 12.0 * TAU
 	# Receive lamp flickers now and then, like faint carrier traffic.
 	var rx := (fmod(_t, 5.0) < 0.6 and sin(_t * 31.0) > 0.0) or _t < _rx_until
-	_rx_lamp.material_override = BuildKit.lamp(BuildKit.GREEN, rx)
+	BuildKit.set_mat(_rx_lamp, BuildKit.lamp(BuildKit.GREEN, rx))
 
 
 func _build_desk(p: Node3D) -> void:
@@ -282,6 +282,7 @@ func _build_wall() -> void:
 	K.box(self, Vector3(0.24, 0.1, 0.1), Vector3(-0.3, 2.25, z + 0.05), K.mat("metal_dark"))
 	K.box(self, Vector3(0.2, 0.02, 0.07), Vector3(-0.3, 2.195, z + 0.06), K.lamp(Color(1.0, 0.86, 0.65), true, 1.5), Vector3.ZERO, false)
 	var light := OmniLight3D.new()
+	light.add_to_group("accent_light")
 	light.light_color = Color(1.0, 0.84, 0.62)
 	light.light_energy = 0.7
 	light.omni_range = 2.4

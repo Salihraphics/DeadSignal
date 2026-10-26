@@ -108,6 +108,8 @@ Tactical map and launch (Stage 4-5 prototype)
 6. **Turn the KEY** to arm, tap the red **MASTER** cover to lift it, then tap MASTER again. A 5 s countdown follows; `ABORT`, the key or `ABORT` on the CRT stop it.
 7. At T-0 the missile rises through the shaft window. From that moment the launch is irreversible and recorded once. A fictional report follows on the centre CRT; the event appears on the map and in the log, and the shaft reloads.
 
+Zoom is anchored on the cursor: the map point under the cursor stays under it while zooming in or out (near the sheet edge the view stops at the boundary instead).
+
 Map conventions: one fixed fictional sheet (160 x 120 km, north up). Grid squares are 40 km (`P`-`S` west to east, `R`-`T` north to south) split into 4 km cells numbered by easting then northing (counted from the square's south edge). `RS-27` is the cell 88-92 km east, 48-52 km south, 12 km east of Karsen Junction. Varnesk lies off this sheet to the west. Reported intelligence is shown dashed in amber and is not confirmed; what is really there is only revealed by events.
 
 Controls
@@ -140,6 +142,18 @@ Interactive objects
 | Status | Facility status panel | Lean in; breakers CB-1..4 open/close and move their power meters |
 
 Small or distant controls (the comms line switches and the status breakers) only work after leaning in to their panel, so every touch target stays comfortably large.
+
+Graphics quality
+
+A small `GFX` button (top left) cycles **AUTO -> LOW -> MEDIUM -> HIGH**; the choice is remembered on the device.
+
+| Preset | MSAA | 3D render resolution | Key-light shadow | Glow | Accent lights | Radar redraw |
+| --- | --- | --- | --- | --- | --- | --- |
+| HIGH | 2x | native | on | on | on | 30 Hz |
+| MEDIUM | off | capped at ~2.4 Mpx, upscaled | on | on | on | 24 Hz |
+| LOW | off | capped at ~1.3 Mpx, upscaled | off | off | off | 15 Hz |
+
+Only rendering cost changes: the HUD, CRT text, map layers, controls and gameplay are identical on every preset. The pixel cap is computed from the device's screen size, so a high-resolution tablet renders the 3D room at about a phone's pixel count. **AUTO** starts at MEDIUM on Android (HIGH on desktop), measures this device's frame rate after a few seconds, and steps down one level (at most twice) if it stays under 40 FPS. The FPS readout (top right) shows the result.
 
 Getting the APK onto a phone (no desktop needed)
 
@@ -178,6 +192,7 @@ scripts/ammunition.gd    Fictional ammunition categories (cost, effect radius)
 scripts/launch_controller.gd Countdown, ignition, report delay, reload
 scripts/outcome_model.gd Abstract fictional launch outcomes
 scripts/missile_launch.gd Missile, flame, smoke and hatch in the shaft
+scripts/graphics_settings.gd LOW / MEDIUM / HIGH / AUTO rendering presets
 scripts/comms_station.gd Left: telephone, radio, printer, reports, clock
 scripts/status_station.gd Right: gauges, power meters, readiness, warnings
 scripts/operator_camera.gd Seated camera limits, views, focus lean, touch/mouse/keys

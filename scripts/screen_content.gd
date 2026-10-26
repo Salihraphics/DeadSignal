@@ -19,12 +19,16 @@ var _sweep := 0.0
 var _blips: Array[Dictionary] = []
 var _font: Font
 var _range := 3                     # range setting 1..3
+## Sweep redraw rate; graphics presets lower it on weak devices.
+var redraw_hz := 30.0
+var _since_draw := 0.0
 var _poke_uv := Vector2.ZERO
 var _poke_t := -100.0
 
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	add_to_group("radar")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1985
 	for i in range(5):
@@ -45,7 +49,11 @@ func _process(delta: float) -> void:
 		b.glow = maxf(b.glow - delta * 0.35, 0.0)
 		if _angle_between(b.a, prev, _sweep):
 			b.glow = 1.0
-	queue_redraw()
+	# The sweep animates continuously but is redrawn at a fixed rate.
+	_since_draw += delta
+	if _since_draw >= 1.0 / redraw_hz:
+		_since_draw = 0.0
+		queue_redraw()
 
 
 func _draw() -> void:

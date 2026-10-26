@@ -19,6 +19,8 @@ const CURVATURE := 0.06
 @export var focus_distance := 0.0
 @export var focus_elevation_deg := 0.0
 
+var _vp: SubViewport
+
 
 func _ready() -> void:
 	var K := BuildKit
@@ -53,11 +55,17 @@ func _ready() -> void:
 	vp.size = resolution
 	vp.disable_3d = true
 	vp.transparent_bg = false
-	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Render only when the content actually redraws (see _request_render).
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var drawer := _make_content()
 	drawer.size = Vector2(resolution)
 	vp.add_child(drawer)
 	add_child(vp)
+	_vp = vp
+	drawer.draw.connect(_request_render)
+	for c in drawer.get_children():
+		if c is CanvasItem:
+			c.draw.connect(_request_render)     # e.g. the map's cursor overlay
 
 	var sm := ShaderMaterial.new()
 	sm.shader = CRT_SHADER
@@ -103,3 +111,9 @@ func _make_content() -> Node2D:
 	var sc := ScreenContent.new()
 	sc.mode = content
 	return sc
+
+
+## A static CRT image costs nothing to keep: the SubViewport re-renders
+## only in frames where its content (or an overlay) was redrawn.
+func _request_render() -> void:
+	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE

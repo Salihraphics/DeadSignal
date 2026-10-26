@@ -18,6 +18,7 @@ var orders: Node
 var _font: Font
 var _blink := true
 var _t := 0.0
+var _since_draw := 0.0
 var _poke_uv := Vector2.ZERO
 var _poke_t := -100.0
 
@@ -41,9 +42,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	var b := fmod(_t, 1.0) < 0.5
-	# Redraw on blink edges, and continuously while the countdown/track runs.
-	if b != _blink or state.locked() or _t - _poke_t < 1.6:
+	_since_draw += delta
+	# Redraw on blink edges; while the countdown/track runs, at ~20 Hz.
+	if b != _blink or ((state.locked() or _t - _poke_t < 1.6) and _since_draw >= 0.05):
 		_blink = b
+		_since_draw = 0.0
 		queue_redraw()
 
 

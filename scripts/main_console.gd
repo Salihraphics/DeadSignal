@@ -31,6 +31,7 @@ func _ready() -> void:
 	state.selection_changed.connect(_sync_controls)
 	_sync_controls()
 	var spill := OmniLight3D.new()
+	spill.add_to_group("accent_light")
 	spill.light_color = Color(0.45, 1.0, 0.55)
 	spill.light_energy = 0.28
 	spill.omni_range = 1.6
@@ -41,8 +42,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	var idle: bool = not state.locked()
-	_blink_lamp.material_override = BuildKit.lamp(BuildKit.AMBER, idle and fmod(_t, 1.6) < 0.8)
-	_crit_lamp.material_override = BuildKit.lamp(BuildKit.RED, not idle and fmod(_t, 0.5) < 0.25, 3.0)
+	BuildKit.set_mat(_blink_lamp, BuildKit.lamp(BuildKit.AMBER, idle and fmod(_t, 1.6) < 0.8))
+	BuildKit.set_mat(_crit_lamp, BuildKit.lamp(BuildKit.RED, not idle and fmod(_t, 0.5) < 0.25, 3.0))
 
 
 func _build_desk() -> void:

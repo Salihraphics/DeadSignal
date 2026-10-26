@@ -7,7 +7,10 @@ extends Node
 ## the same conversion. A launch always uses the confirmed target cell
 ## snapshot, never a screen position.
 
+## View (centre/zoom) or layers changed: the whole map must be redrawn.
 signal map_changed
+## Only the cursor moved (view unchanged): just the cursor overlay changes.
+signal cursor_moved
 signal selection_changed
 signal launch_changed(state: Launch)
 signal event_recorded(event: Dictionary)
@@ -78,10 +81,14 @@ func pan_km(delta: Vector2) -> void:
 	map_changed.emit()
 
 
+## Zooms about the cursor: the map point under the cursor stays under the
+## same screen position (unless the sheet edge forces a clamp). The cursor's
+## map coordinate itself is never changed by zooming.
 func zoom_by(factor: float) -> void:
+	var anchor_px := km_to_view(cursor)
 	map_zoom = clampf(map_zoom * factor, min_zoom(), MAX_ZOOM)
+	map_center = cursor - (anchor_px - view_px * 0.5) / map_zoom
 	_clamp_view()
-	_keep_cursor_in_view()
 	map_changed.emit()
 
 
@@ -89,12 +96,14 @@ func zoom_by(factor: float) -> void:
 func move_cursor(delta_km: Vector2) -> void:
 	cursor = (cursor + delta_km).clamp(Vector2.ZERO, MapGrid.EXTENT - Vector2(0.001, 0.001))
 	var r := view_rect_km().grow(-1.0 / map_zoom * 8.0)
-	if not r.has_point(cursor):
-		var shift := Vector2(
-			minf(0.0, cursor.x - r.position.x) + maxf(0.0, cursor.x - r.end.x),
-			minf(0.0, cursor.y - r.position.y) + maxf(0.0, cursor.y - r.end.y))
-		map_center += shift
-		_clamp_view()
+	if r.has_point(cursor):
+		cursor_moved.emit()
+		return
+	var shift := Vector2(
+		minf(0.0, cursor.x - r.position.x) + maxf(0.0, cursor.x - r.end.x),
+		minf(0.0, cursor.y - r.position.y) + maxf(0.0, cursor.y - r.end.y))
+	map_center += shift
+	_clamp_view()
 	map_changed.emit()
 
 

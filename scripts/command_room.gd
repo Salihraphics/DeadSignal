@@ -28,6 +28,10 @@ var _alarm := false
 var _t := 0.0
 
 
+func _enter_tree() -> void:
+	add_to_group("command_room")
+
+
 func _ready() -> void:
 	_build_shell()
 	_build_window()
@@ -43,11 +47,20 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _shaft_beacon:
 		var on := fmod(_t, 0.5) < 0.25 if _alarm else fmod(_t, 2.4) < 0.25
-		_shaft_beacon.material_override = BuildKit.lamp(BuildKit.RED, on, 3.0)
+		BuildKit.set_mat(_shaft_beacon, BuildKit.lamp(BuildKit.RED, on, 3.0))
 	if _t < _flicker_until:
 		_key_light.light_energy = _key_energy * (0.55 + 0.45 * absf(sin(_t * 41.0) * sin(_t * 17.0)))
 	elif _key_light and _key_light.light_energy != _key_energy:
 		_key_light.light_energy = _key_energy
+
+
+## Graphics presets: the key light's shadow and the glow post-effect.
+func set_quality(shadows: bool, glow: bool) -> void:
+	if _key_light:
+		_key_light.shadow_enabled = shadows
+	var we := get_node_or_null("Environment") as WorldEnvironment
+	if we:
+		we.environment.glow_enabled = glow
 
 
 ## Brief unsteady lighting (launch vibration through the fittings).
@@ -181,6 +194,7 @@ func _build_shaft() -> void:
 	shaft_light.rotation_degrees = Vector3(-90, 0, 0)
 	add_child(shaft_light)
 	var lamp_light := OmniLight3D.new()
+	lamp_light.add_to_group("accent_light")
 	lamp_light.light_color = Color(1.0, 0.8, 0.55)
 	lamp_light.light_energy = 0.8
 	lamp_light.omni_range = 3.0
@@ -266,5 +280,6 @@ func _build_environment() -> void:
 	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.2
 	var we := WorldEnvironment.new()
+	we.name = "Environment"
 	we.environment = env
 	add_child(we)
