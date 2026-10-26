@@ -20,6 +20,8 @@ const CURVATURE := 0.06
 @export var focus_elevation_deg := 0.0
 
 var _vp: SubViewport
+var _sm: ShaderMaterial
+const ON_BRIGHTNESS := 1.5
 
 
 func _ready() -> void:
@@ -67,7 +69,9 @@ func _ready() -> void:
 		if c is CanvasItem:
 			c.draw.connect(_request_render)     # e.g. the map's cursor overlay
 
+	add_to_group("crt")
 	var sm := ShaderMaterial.new()
+	_sm = sm
 	sm.shader = CRT_SHADER
 	sm.set_shader_parameter("screen_tex", vp.get_texture())
 	sm.set_shader_parameter("scanlines", float(resolution.y) * 0.5)
@@ -90,6 +94,21 @@ func _ready() -> void:
 	zone.poked.connect(func(p: Vector3) -> void:
 		drawer.poke(glass_to_texture(Vector2(p.x / screen_size.x + 0.5, 0.5 - p.y / screen_size.y))))
 	zone.action_requested.connect(drawer.do_action)
+
+
+## Dark tube (start of shift, before power-up).
+func power_off() -> void:
+	_sm.set_shader_parameter("brightness", 0.0)
+
+
+## Warms the tube up after `delay` seconds: a bright flash that settles.
+func power_up(delay := 0.0) -> void:
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(Sfx.play.bind("crt_power", -8.0, randf_range(0.95, 1.05)))
+	tw.tween_method(func(v: float) -> void: _sm.set_shader_parameter("brightness", v), 0.0, 3.0, 0.12)
+	tw.tween_method(func(v: float) -> void: _sm.set_shader_parameter("brightness", v), 3.0, 0.4, 0.25)
+	tw.tween_method(func(v: float) -> void: _sm.set_shader_parameter("brightness", v), 0.4, ON_BRIGHTNESS, 1.2)
 
 
 ## Texture coordinate displayed at a point of the glass (0..1 quad UV).
