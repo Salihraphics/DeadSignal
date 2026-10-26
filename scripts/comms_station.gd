@@ -342,6 +342,7 @@ func _build_desk_lamp(p: Node3D) -> void:
 	K.cyl(shade, 0.035, 0.1, Vector3.ZERO, K.mat("paint_green"), Vector3.ZERO, 10, 0.075)
 	K.cyl(shade, 0.06, 0.004, Vector3(0, 0.05, 0), K.lamp(Color(1.0, 0.85, 0.6), true, 2.0), Vector3.ZERO, 10, -1.0, false)
 	var light := SpotLight3D.new()
+	light.add_to_group("minor_light")        # off on LOW (graphics preset)
 	light.light_color = Color(1.0, 0.82, 0.58)
 	light.light_energy = 1.8
 	light.spot_range = 1.3

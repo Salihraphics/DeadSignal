@@ -19,10 +19,16 @@ extends Node
 signal preset_changed(mode: String, active: String)
 
 const MODES := ["AUTO", "LOW", "MEDIUM", "HIGH"]
+## Retuned after device reports (Lenovo Tab M11, 1920x1200: LOW ~30,
+## MEDIUM ~15, HIGH ~7-8 FPS on v0.5.0) and re-measurement: glow is the
+## largest single cost after resolution (+44 % frame time on LOW when
+## enabled), so MEDIUM no longer uses it; MEDIUM's 3D resolution is capped
+## below native; LOW renders 3D at about 0.9 Mpx and drops the two desk
+## lamps ("minor_light") and smoke particles.
 const PRESETS := {
-	"LOW": {"msaa": Viewport.MSAA_DISABLED, "pixel_cap": 1.3e6, "shadows": false, "glow": false, "accent_lights": false, "radar_hz": 15.0},
-	"MEDIUM": {"msaa": Viewport.MSAA_DISABLED, "pixel_cap": 2.4e6, "shadows": true, "glow": true, "accent_lights": true, "radar_hz": 24.0},
-	"HIGH": {"msaa": Viewport.MSAA_2X, "pixel_cap": 0.0, "shadows": true, "glow": true, "accent_lights": true, "radar_hz": 30.0},
+	"LOW": {"msaa": Viewport.MSAA_DISABLED, "pixel_cap": 0.9e6, "shadows": false, "glow": false, "accent_lights": false, "minor_lights": false, "radar_hz": 12.0},
+	"MEDIUM": {"msaa": Viewport.MSAA_DISABLED, "pixel_cap": 1.6e6, "shadows": true, "glow": false, "accent_lights": true, "minor_lights": true, "radar_hz": 20.0},
+	"HIGH": {"msaa": Viewport.MSAA_2X, "pixel_cap": 0.0, "shadows": true, "glow": true, "accent_lights": true, "minor_lights": true, "radar_hz": 30.0},
 }
 const ORDER := ["LOW", "MEDIUM", "HIGH"]
 const SETTINGS_PATH := "user://settings.cfg"
@@ -114,7 +120,7 @@ func _apply(preset: String) -> void:
 	var pixels := float(vp.size.x * vp.size.y)
 	var scale := 1.0
 	if p.pixel_cap > 0.0 and pixels > p.pixel_cap:
-		scale = clampf(sqrt(p.pixel_cap / pixels), 0.5, 1.0)
+		scale = clampf(sqrt(p.pixel_cap / pixels), 0.45, 1.0)
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	vp.scaling_3d_scale = scale
 	var room := get_tree().get_first_node_in_group("command_room")
@@ -122,6 +128,8 @@ func _apply(preset: String) -> void:
 		room.set_quality(p.shadows, p.glow)
 	for l in get_tree().get_nodes_in_group("accent_light"):
 		l.visible = p.accent_lights
+	for l in get_tree().get_nodes_in_group("minor_light"):
+		l.visible = p.minor_lights
 	for r in get_tree().get_nodes_in_group("radar"):
 		r.redraw_hz = p.radar_hz
 	preset_changed.emit(mode, active)

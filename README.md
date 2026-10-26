@@ -34,7 +34,7 @@ Features
 - Consequential gameplay — Influence the battlefield and the fate of Norvak.
 - Multiple endings — Your performance and decisions shape the outcome.
 
-These are planned features. Not all are implemented yet.
+Most of these exist in prototype form; see the roadmap below.
 
 The World
 
@@ -70,47 +70,48 @@ Technology
 Roadmap
 
 - [x] Create the initial Godot project.
-- [x] Build the 3D command room. *(Stage 1 prototype)*
-- [x] Implement limited seated camera movement. *(Stage 1 prototype)*
-- [ ] Create CRT displays and analogue control panels. *(placeholders in place)*
-- [x] Basic placeholder interactions and focus mode.
-- [ ] Add lighting, materials, and environmental details.
-- [ ] Implement communications and incoming orders. *(first order playable)*
-- [x] Add fictional map and radar interfaces. *(tactical map; radar placeholder)*
-- [x] Develop the missile launch sequence. *(prototype)*
-- [ ] Implement battlefield simulation and decision consequences.
-- [ ] Add endings, statistics, and sound design.
-- [ ] Optimise and test on Android.
+- [x] Build the 3D command room and the limited seated camera.
+- [x] CRT displays and analogue control panels.
+- [x] Interactions and focus mode.
+- [x] Main menu, persisted settings, pause menu.
+- [x] Opening cinematic.
+- [x] Communications: orders, status and field reports, intercepts, calls.
+- [x] Fictional tactical map and radar interfaces.
+- [x] Missile launch sequence.
+- [x] Decision consequences, three endings, after-action report.
+- [x] Procedural placeholder sound design (audio-first notifications).
+- [ ] Russian voice recordings for all dialogue (slots and subtitles in place).
+- [ ] Recorded sound effects and music to replace the placeholders.
+- [ ] Profiling on more Android devices.
 
-Running the Prototype
+Playing
 
-The current build is the command room, the seated camera, the first playable order, a tactical map driven by physical desk controls, and a first launch prototype. There is no campaign, battlefield simulation or ending yet. All mechanics are fictional and abstract.
+**Main menu** (the entry screen): `CONTINUE` (only when a shift is saved), `NEW GAME`, `SETTINGS`, `CREDITS`, `EXIT`.
 
-First order (Stage 3)
+**NEW GAME** plays the opening cinematic (about 85 s, skippable with two taps on `SKIP` or the Android back gesture): a briefing in front of a whiteboard of the three enemy fronts, a report quietly set aside, radio traffic that does not match the briefing. Then the operator is alone at Launch Control Post K-4 as the screens warm up. There is no mission select; the shift simply begins.
 
-About ten seconds after the room loads, order **SC-001** arrives on the teleprinter:
+**One continuous shift.** There are no days or missions. Traffic and orders keep arriving until one of three endings. The game saves automatically (after every decision and event, every 30 s, and when the app is paused or closed); `MENU` → `SAVE AND EXIT TO MENU` returns to the menu, and `CONTINUE` resumes exactly where you left off without repeating anything.
 
-1. The teleprinter prints and its lamp blinks, a pulsing `! ORDER SC-001 - READ` notice appears top right, and the strategic-control CRT shows `SC-001 PENDING`.
-2. Tap the notice or the teleprinter to read the order on a paper sheet. `CLOSE`, `Esc` or Android back returns to the room; the order stays pending.
-3. Reply with `ACCEPT` or `REFUSE`. Each needs a second tap (`CONFIRM ...`) so a stray touch cannot decide; tapping the other button or closing the sheet disarms it.
-4. The decision is stamped on the sheet with its time, confirmed on screen, recorded by the order manager and shown on the CRT (`SC-001 ACCEPTED` with readiness `LEVEL 2`, or `SC-001 REFUSED`). It cannot be changed.
-5. Tap the teleprinter at any time afterwards to reread the order with its stamp.
+The first part, **SILENT FRONT** (about 9 minutes, no launch authority), is a routine shift: Central reports the Karsen sector as controlled, but its basis is a field report from the previous evening, the line to Karsen is dead, and a radio fragment says otherwise. You can check timestamps, sources and verification, and request confirmation. The answer never quite comes.
 
-Decisions are kept for the current session only. The unit, place and officer names in the order are fictional and provisional.
+After that, **orders** arrive one by one on the teleprinter. They get harder and less clear. Each has a reply deadline (no reply is recorded as such). Consequences often surface several orders later. Refusing is not always right, and neither is obeying. Fire missions grant launch authority for one grid and a maximum category only.
 
-Tactical map and launch (Stage 4-5 prototype)
+How it works:
 
-1. **Read the order**, then tap the left CRT to lean in over the map and the **MAP NAVIGATION** unit beside it.
-2. **Navigate with the knobs** (touching the map itself does nothing): circle `CURSOR X` / `CURSOR Y` with a finger to move the reticle, `ZOOM` to zoom, roll the `PAN` trackball to move the view. `LAYER` selects one of nine layers and `ON / OFF` shows or hides it.
-3. **Confirm a grid** with `CONFIRM GRID`: the 4 km cell under the cursor (e.g. `RS-27`) becomes the target and stays fixed while you keep moving the map.
-4. **Choose ammunition** with the `S` / `M` / `L` push buttons on the desk (or the CRT focus buttons). Costs come out of 10 resource points.
-5. **Review the launch summary** on the centre CRT: grid, classification, intelligence confidence, cost, and warnings for known friendly or civilian presence in the effect area.
-6. **Turn the KEY** to arm, tap the red **MASTER** cover to lift it, then tap MASTER again. A 5 s countdown follows; `ABORT`, the key or `ABORT` on the CRT stop it.
-7. At T-0 the missile rises through the shaft window. From that moment the launch is irreversible and recorded once. A fictional report follows on the centre CRT; the event appears on the map and in the log, and the shaft reloads.
+- **Audio first.** The printer motor, the telephone bell, radio static or the CRT alert tone is heard before any lamp, notice or text appears. Notices sit at the screen edge (`! ORDER ...`, `TELEPRINTER: n UNREAD`), never in the middle.
+- **Teleprinter / reader.** Tap the teleprinter or a notice to read. A report shows its reference, type, time, source, source id, verification, basis, conflicts, age and confirmation state. `REQUEST CONFIRMATION` and `FORWARD TO COMMAND` appear where they apply. `LOG` lists all traffic, newest first.
+- **Telephone.** When it rings, tap it to answer (the call is subtitled with its caller). Unanswered calls are logged as missed.
+- **Radio.** While the RX lamp flickers with live traffic, tap the radio to listen.
+- **Orders.** `ACCEPT` / `REFUSE` need a confirming second tap. The decision is stamped, recorded and cannot be changed.
+- **Launch.** As before (map knobs → `CONFIRM GRID` → `S`/`M`/`L` → KEY → MASTER twice), but only within an accepted fire order's grid and category.
 
-Zoom is anchored on the cursor: the map point under the cursor stays under it while zooming in or out (near the sheet edge the view stops at the boundary instead).
+**Endings.** Exactly three, decided by the hidden state of the run (command trust, front stability and information integrity), never selectable: relieved of duty; Varnesk falls; Norvak survives. Each is followed by an **after-action report** that lists only what the game tracked: orders (followed, refused, no reply), reports and how many were unverified, confirmation requests, intercepts, calls, launches with their reported results, allocation units spent, beers and cigarettes. No casualty figures.
 
-Map conventions: one fixed fictional sheet (160 x 120 km, north up). Grid squares are 40 km (`P`-`S` west to east, `R`-`T` north to south) split into 4 km cells numbered by easting then northing (counted from the square's south edge). `RS-27` is the cell 88-92 km east, 48-52 km south, 12 km east of Karsen Junction. Varnesk lies off this sheet to the west. Reported intelligence is shown dashed in amber and is not confirmed; what is really there is only revealed by events.
+**The operator** talks rarely: tired, restrained, observant, now and then dry. Lines react to what happens (beer, cigarettes, silence, unanswered requests, approvals, reports) and reveal a few personal details slowly. One-time lines never repeat, even across saves.
+
+**Beer and cigarettes** at the right corner of the main desk are purely atmospheric: no meters, bonuses or penalties, and no effect on any outcome. Each completed drink or cigarette is counted once (for the report). A second beer in a row gives one very slight, brief camera shake (none with reduced motion).
+
+Map conventions: one fixed fictional sheet (160 x 120 km, north up). Grid squares are 40 km (`P`-`S` west to east, `R`-`T` north to south) split into 4 km cells numbered by easting then northing (counted from the square's south edge). `RS-27` is the cell 88-92 km east, 48-52 km south, 12 km east of Karsen Junction. Varnesk lies off this sheet to the west. Reported intelligence is shown dashed in amber and is not confirmed; what is really there is only revealed by events. Zoom is anchored on the cursor.
 
 Controls
 
@@ -121,9 +122,10 @@ Controls
 | Face the main console again | `CONSOLE` button or double-tap empty space | Double-click, `R`, `Space` or `Home` |
 | Use a control / lean in to a screen or panel | Tap it | Click it |
 | Turn a desk knob | Circle it with a finger | Circle it with the mouse |
-| Leave a focused view | `< BACK`, double-tap empty space, or Android back | `Esc`, `R`, `Space` |
+| Leave a focused view / close a sheet | `< BACK`, double-tap empty space, or Android back | `Esc` |
+| Pause, settings, save and exit | `MENU` (top left) or Android back | `MENU` |
 
-The view turns about 80° to either side and tilts slightly up and down. The operator cannot stand, walk or turn around. A press that moves is always a look-drag; only a short tap interacts, and on-screen buttons never turn the view.
+The view turns about 80° to either side and tilts slightly. The operator cannot stand, walk or turn around. A press that moves is always a look-drag; only a short tap interacts, and on-screen buttons never turn the view.
 
 Interactive objects
 
@@ -131,29 +133,37 @@ Interactive objects
 | --- | --- | --- |
 | Main desk | Three CRT screens | Lean in (focus). Map: physical controls only. Control: `SMALL` `MEDIUM` `LARGE` `ABORT` `CLEAR`. Radar: `RANGE` |
 | Main desk | Map navigation unit | Cursor X/Y, zoom, pan trackball, layer selector and on/off, confirm grid |
-| Main desk | Five toggle switches | Lever flips, status message |
-| Main desk | Six push buttons | `S` `M` `L` select ammunition (lit = selected), `ABORT`, two spares |
-| Main desk | Three counter knobs | Knob turns, steps the amber counter (placeholder) |
-| Main desk | KEY and red MASTER | Key arms / safes; MASTER lifts its cover, then starts the launch sequence |
-| Comms | Telephone | Handset lifts / hangs up, off-hook lamp |
-| Comms | Radio transceiver | Cycles placeholder channels |
-| Comms | Teleprinter | Opens the current order (before one arrives: paper feeds, "no new messages") |
-| Comms | Communication lines panel | Lean in; six line switches toggle their lamps |
-| Status | Facility status panel | Lean in; breakers CB-1..4 open/close and move their power meters |
+| Main desk | Push buttons, KEY, MASTER | Ammunition, abort, arming, launch |
+| Main desk | Beer bottles, cigarette pack | Drink / smoke (atmosphere only) |
+| Comms | Telephone | Answers a ringing call; otherwise lifts / hangs up |
+| Comms | Radio transceiver | Listens to live traffic; otherwise cycles channels |
+| Comms | Teleprinter | Opens the pending order, the newest unread item, or the log |
+| Comms | Communication lines panel | Lean in; six line switches |
+| Comms | Wall clock | Facility time (05:40 at shift start) |
+| Status | Facility status panel | Lean in; breakers move their power meters |
 
-Small or distant controls (the comms line switches and the status breakers) only work after leaning in to their panel, so every touch target stays comfortably large.
+Settings
+
+All settings are saved on the device immediately (`user://settings.cfg`) and are available from the main menu and the in-game `MENU`.
+
+- **Graphics:** AUTO / LOW / MEDIUM / HIGH (also the quick `GFX` button in the room).
+- **Audio:** Master, Music, SFX and Voice volumes (separate audio buses).
+- **Subtitles:** on/off and size. Subtitles are English; dialogue is written to be spoken in Russian. Until a line has a recording, its subtitle is always shown.
+- **Controls:** camera sensitivity, invert vertical, reduced motion (no camera sway or shake, no light flicker).
 
 Graphics quality
 
-A small `GFX` button (top left) cycles **AUTO -> LOW -> MEDIUM -> HIGH**; the choice is remembered on the device.
-
-| Preset | MSAA | 3D render resolution | Key-light shadow | Glow | Accent lights | Radar redraw |
+| Preset | MSAA | 3D render resolution | Key-light shadow | Glow | Accent / desk lamps | Radar redraw |
 | --- | --- | --- | --- | --- | --- | --- |
-| HIGH | 2x | native | on | on | on | 30 Hz |
-| MEDIUM | off | capped at ~2.4 Mpx, upscaled | on | on | on | 24 Hz |
-| LOW | off | capped at ~1.3 Mpx, upscaled | off | off | off | 15 Hz |
+| HIGH | 2x | native | on | on | on / on | 30 Hz |
+| MEDIUM | off | capped at ~1.6 Mpx, upscaled | on | off | on / on | 20 Hz |
+| LOW | off | capped at ~0.9 Mpx, upscaled | off | off | off / off | 12 Hz |
 
-Only rendering cost changes: the HUD, CRT text, map layers, controls and gameplay are identical on every preset. The pixel cap is computed from the device's screen size, so a high-resolution tablet renders the 3D room at about a phone's pixel count. **AUTO** starts at MEDIUM on Android (HIGH on desktop), measures this device's frame rate after a few seconds, and steps down one level (at most twice) if it stays under 40 FPS. The FPS readout (top right) shows the result.
+Only rendering cost changes: HUD, CRT content, map layers, controls and gameplay are identical on every preset; LOW also skips the cigarette smoke particles. The pixel cap follows the device's screen size. **AUTO** starts at MEDIUM on Android (HIGH on desktop), measures the frame rate in the command room, and steps down (at most twice) if it stays under 40 FPS.
+
+Audio and voice
+
+Sound effects in `assets/audio/sfx/` are synthesised placeholders generated by `tools/gen_sounds.py` (no third-party recordings). Replace any of them with a recorded `.wav` of the same name. No voices are synthesised: dialogue lines have voice slots at `assets/audio/voice/ru/<line id>.ogg` (ids in `scripts/data/dialogue_lines.gd` and the cinematic's `LINES` table). Drop a recording in and it plays on the Voice bus with its English subtitle.
 
 Getting the APK onto a phone (no desktop needed)
 
@@ -167,53 +177,45 @@ Opening the project in an editor
 - **Android:** install the official *Godot Engine 4* editor (4.5 or newer) from Google Play, clone or download this repository to the phone, then *Import* the folder containing `project.godot`.
 - **Desktop:** Godot 4.5+ → *Import* → select `project.godot` → press *Run* (F5).
 
-The renderer is *Compatibility* (OpenGL ES 3) for the widest range of Android phones.
+The renderer is *Compatibility* (OpenGL ES 3) for the widest range of Android phones. Opening `scenes/main.tscn` directly runs the room as a sandbox (no scenario; the first order arrives after ten seconds).
 
 Project Structure
 
 ```
-project.godot            Engine settings (landscape, Compatibility renderer)
-export_presets.cfg       Android export preset (debug APK, arm64 + armv7)
-scenes/main.tscn         The room: shell, three stations, camera, HUD
-scenes/hud.tscn          Touch buttons, control hint, FPS readout
-scripts/build_kit.gd     Shared geometry helpers + material/colour palette
-scripts/command_room.gd  Walls, observation window, launch shaft, lights
-scripts/main_console.gd  Main desk, control panel, ammunition / key / MASTER
-scripts/crt_monitor.gd   CRT monitor (bezel, tube, live screen)
-scripts/screen_content.gd Right CRT: radar sweep
-scripts/map/map_grid.gd  The one map coordinate system and grid references
-scripts/map/map_data.gd  Fixed fictional geography, military overlay, hidden truth
-scripts/map/map_query.gd What is known about a cell (never the hidden truth)
-scripts/map/tactical_map.gd Left CRT: map renderer, layers, cursor, target
-scripts/map_control_unit.gd Physical map knobs, trackball, layer and confirm
-scripts/strategic_state.gd Shared state: view, cursor, target, ammo, launch, events
-scripts/strategic_display.gd Centre CRT: status, ammunition, summary, report
-scripts/ammunition.gd    Fictional ammunition categories (cost, effect radius)
-scripts/launch_controller.gd Countdown, ignition, report delay, reload
-scripts/outcome_model.gd Abstract fictional launch outcomes
-scripts/missile_launch.gd Missile, flame, smoke and hatch in the shaft
-scripts/graphics_settings.gd LOW / MEDIUM / HIGH / AUTO rendering presets
-scripts/comms_station.gd Left: telephone, radio, printer, reports, clock
-scripts/status_station.gd Right: gauges, power meters, readiness, warnings
-scripts/operator_camera.gd Seated camera limits, views, focus lean, touch/mouse/keys
-scripts/interactable.gd  Invisible tap target / focus zone used by props
-scripts/interaction.gd   Turns taps into hits, manages focus mode and back
-scripts/order_catalog.gd Order texts as data (add future orders here)
-scripts/order_manager.gd Current order state, arrival, recorded decisions
-scripts/message_reader.gd Paper view of an order with ACCEPT / REFUSE
-scenes/message_reader.tscn Layout of the paper order sheet
-shaders/crt.gdshader     Scanlines, curvature and vignette for CRTs
-assets/flags/            Approved country flags (unchanged originals)
-assets/textures/         Low-res worn textures (tools/gen_textures.py)
+project.godot              Engine settings, autoloads
+scenes/main_menu.tscn      Entry point: terminal-style menu
+scenes/intro.tscn          Opening cinematic (briefing room)
+scenes/main.tscn           The command room
+scenes/epilogue.tscn       "Norvak survives" epilogue
+scenes/after_action.tscn   After-action report
+scripts/core/settings.gd   Player settings + audio buses (autoload Settings)
+scripts/graphics_settings.gd Rendering presets (autoload Graphics)
+scripts/core/audio.gd      Sound effects, loops, voice playback (autoload Sfx)
+scripts/core/subtitles.gd  Speaker-labelled subtitles (autoload Subtitles)
+scripts/core/run_state.gd  The run: hidden values, traffic, requests, decisions,
+                           habits, statistics, save/load (autoload Run)
+scripts/core/dialogue.gd   Operator dialogue manager (autoload Dialogue)
+scripts/data/dialogue_lines.gd The operator's line library
+scripts/data/scenario.gd   SILENT FRONT beats, order schedule, consequences
+scripts/order_catalog.gd   Order texts, effects, launch authority
+scripts/game/director.gd   Runs the shift: cues, beats, orders, consequences, assessment
+scripts/game/endings.gd    The three endings
+scripts/cinematic/         Opening cinematic and epilogue
+scripts/ui/                Menu, settings, pause, after-action report, shared style
+scripts/vices.gd           Beer and cigarettes
+scripts/message_reader.gd  Orders, reports and the traffic log on paper
+scripts/comms_station.gd   Telephone, radio, teleprinter, clock
+scripts/strategic_state.gd Shared map/target/launch state, authority
+scripts/map/               Map grid, geography, knowledge queries, renderer
+...                        Room, stations, camera, CRTs, launch (as before)
+tools/gen_textures.py      Placeholder textures
+tools/gen_sounds.py        Placeholder sound effects
+assets/flags/              Approved country flags (unchanged originals)
 ```
-
-Room geometry is generated by small scripts at load time, so positions of whole stations and monitors can still be moved in the editor via their nodes in `main.tscn`.
 
 Project Status
 
-Early development.
-
-The current priority is a working 3D command-room prototype. Gameplay systems will be introduced gradually after the environment and camera are functional.
+Playable from menu to ending. Placeholder audio, no voice recordings yet. All countries, places, units and weapons are fictional; launches and their results are abstract.
 
 License
 

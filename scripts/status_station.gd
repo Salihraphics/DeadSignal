@@ -108,6 +108,7 @@ func _build_panel(p: Node3D) -> void:
 	K.box(hood, Vector3(1.2, 0.06, 0.18), Vector3.ZERO, K.mat("paint_grey"))
 	K.box(hood, Vector3(1.1, 0.01, 0.12), Vector3(0, -0.032, 0.0), K.lamp(Color(1.0, 0.88, 0.7), true, 1.3), Vector3.ZERO, false)
 	var light := SpotLight3D.new()
+	light.add_to_group("minor_light")        # off on LOW (graphics preset)
 	light.light_color = Color(1.0, 0.86, 0.66)
 	light.light_energy = 1.6
 	light.spot_range = 2.0
